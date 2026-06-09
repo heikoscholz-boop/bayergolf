@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Bayergolf</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+/* ── Design Tokens ─────────────────────────────────── */
+:root{
+  --blue:#007AFF; --blue-dim:rgba(0,122,255,.12);
+  --green:#34C759; --green-dim:rgba(52,199,89,.12);
+  --red:#FF3B30;   --red-dim:rgba(255,59,48,.12);
+  --orange:#FF9500;--orange-dim:rgba(255,149,0,.12);
+  --bg:#F2F2F7; --card:#FFFFFF;
+  --t1:#000000; --t2:#6C6C70; --t3:#AEAEB2;
+  --sep:#C6C6C8; --fill:rgba(120,120,128,.12);
+  --r-card:16px; --r-btn:12px;
+  --shadow:0 1px 4px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif;
+  background:var(--bg); color:var(--t1);
+  min-height:100%; -webkit-font-smoothing:antialiased;
+}
+
+/* ── Header ─────────────────────────────────────────── */
+.app-header{
+  background:rgba(255,255,255,.88);
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:.5px solid var(--sep);
+  position:sticky; top:0; z-index:90;
+  padding-top:env(safe-area-inset-top);
+}
+.header-inner{
+  max-width:800px; margin:0 auto;
+  display:flex; align-items:center; justify-content:space-between;
+  height:52px; padding:0 18px;
+}
+.header-logo{font-size:20px; font-weight:700; letter-spacing:-.5px}
+.sync-badge{
+  display:flex; align-items:center; gap:6px;
+  font-size:12px; color:var(--t2); cursor:pointer;
+  padding:6px 10px; border-radius:20px; background:var(--fill);
+  border:none; font-family:inherit;
+}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sync-dot.ok{background:var(--green)}
+.sync-dot.busy{background:var(--orange); animation:pulse 1s infinite}
+.sync-dot.err{background:var(--red)}
+.sync-dot.off{background:var(--t3)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── Layout ─────────────────────────────────────────── */
+.main{max-width:800px; margin:0 auto; padding:20px 16px 110px}
+.view{display:none}
+.view.active{display:block}
+.page-title{font-size:30px; font-weight:800; letter-spacing:-.8px; margin-bottom:20px}
+
+/* ── Nav Bar ─────────────────────────────────────────── */
+.nav{
+  background:rgba(255,255,255,.92);
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-top:.5px solid var(--sep);
+  position:fixed; bottom:0; left:0; right:0; z-index:90;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.nav-inner{max-width:800px; margin:0 auto; display:flex; justify-content:space-around}
+.nav-tab{
+  flex:1; display:flex; flex-direction:column; align-items:center;
+  padding:8px 4px; cursor:pointer; color:var(--t3);
+  font-size:10px; font-weight:500; gap:3px; transition:color .2s;
+}
+.nav-tab.active{color:var(--blue)}
+.nav-icon{font-size:22px; line-height:1}
+
+/* ── Cards & Rows ────────────────────────────────────── */
+.card{background:var(--card); border-radius:var(--r-card); box-shadow:var(--shadow); overflow:hidden; margin-bottom:16px}
+.card-head{padding:16px 16px 0; display:flex; align-items:flex-start; justify-content:space-between}
+.card-title{font-size:20px; font-weight:700; letter-spacing:-.4px}
+.card-sub{font-size:13px; color:var(--t2); margin-top:2px}
+.row{display:flex; align-items:center; padding:13px 16px; gap:12px; border-bottom:.5px solid var(--sep)}
+.row:last-child{border-bottom:none}
+.row-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.row-body{flex:1;min-width:0}
+.row-title{font-size:16px;font-weight:500;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-sub{font-size:13px;color:var(--t2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── Buttons ─────────────────────────────────────────── */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:5px;
+  padding:10px 20px; border-radius:var(--r-btn); border:none;
+  font-size:15px; font-weight:600; cursor:pointer; font-family:inherit;
+  transition:opacity .15s, transform .1s;
+}
+.btn:active{opacity:.75; transform:scale(.97)}
+.btn-primary{background:var(--blue); color:#fff}
+.btn-secondary{background:var(--fill); color:var(--blue)}
+.btn-danger{background:var(--red-dim); color:var(--red)}
+.btn-success{background:var(--green-dim); color:var(--green)}
+.btn-w{width:100%}
+.btn-sm{padding:7px 13px; font-size:13px; border-radius:10px}
+.add-btn{width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.icon-btn{width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
+.icon-btn-blue{background:var(--blue-dim);color:var(--blue)}
+.icon-btn-red{background:var(--red-dim);color:var(--red)}
+
+/* ── Forms ───────────────────────────────────────────── */
+.form-section{margin-bottom:22px}
+.form-label{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);margin-bottom:8px;padding:0 2px}
+.input-group{background:var(--card);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.input-row{display:flex;align-items:center;height:50px;padding:0 16px;border-bottom:.5px solid var(--sep)}
+.input-row:last-child{border-bottom:none}
+.input-lbl{font-size:15px;width:140px;flex-shrink:0;color:var(--t1)}
+.input-field{flex:1;border:none;background:transparent;font-size:15px;color:var(--t1);font-family:inherit;text-align:right;outline:none;padding:0;min-width:0}
+.input-field::placeholder{color:var(--t3)}
+select.input-field{-webkit-appearance:none;cursor:pointer}
+.cb-item{display:flex;align-items:center;padding:13px 16px;gap:12px;border-bottom:.5px solid var(--sep)}
+.cb-item:last-child{border-bottom:none}
+.cb-item input[type=checkbox]{width:22px;height:22px;accent-color:var(--blue);cursor:pointer;flex-shrink:0}
+.cb-label{font-size:16px;flex:1;cursor:pointer}
+
+/* ── Chips ───────────────────────────────────────────── */
+.chip{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:12px;font-weight:600}
+.chip-blue{background:var(--blue-dim);color:var(--blue)}
+.chip-green{background:var(--green-dim);color:var(--green)}
+.chip-orange{background:var(--orange-dim);color:var(--orange)}
+.chip-gray{background:var(--fill);color:var(--t2)}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-green{background:var(--green)}
+.dot-orange{background:var(--orange)}
+
+/* ── Modal / Bottom Sheet ────────────────────────────── */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .28s;
+}
+.overlay.open{opacity:1;pointer-events:all}
+.sheet{
+  background:var(--bg);border-radius:20px 20px 0 0;
+  width:100%;max-width:800px;max-height:92dvh;
+  overflow-y:auto;overscroll-behavior:contain;
+  transform:translateY(100%);
+  transition:transform .3s cubic-bezier(.32,.72,0,1);
+  padding-bottom:max(env(safe-area-inset-bottom),16px);
+}
+.overlay.open .sheet{transform:translateY(0)}
+.sheet-handle{width:36px;height:5px;background:var(--sep);border-radius:3px;margin:12px auto 0}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
+.sheet-title{font-size:17px;font-weight:700}
+.sheet-close{background:rgba(0,0,0,.06);border:none;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer;color:var(--t2);display:flex;align-items:center;justify-content:center}
+.sheet-body{padding:0 16px 8px}
+@media(min-width:640px){
+  .overlay{align-items:center}
+  .sheet{border-radius:20px;max-width:580px;max-height:88dvh;margin:0 16px}
+}
+
+/* ── Score Entry ─────────────────────────────────────── */
+.score-grid-head{
+  display:grid;grid-template-columns:1fr 90px 90px;gap:8px;
+  padding:8px 16px;background:var(--bg);
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t2);
+}
+.score-grid-row{
+  display:grid;grid-template-columns:1fr 90px 90px;gap:8px;align-items:center;
+  padding:10px 16px;background:var(--card);border-top:.5px solid var(--sep);
+}
+.score-num{
+  border:1.5px solid var(--sep);border-radius:8px;padding:9px 6px;
+  font-size:16px;text-align:center;font-family:inherit;color:var(--t1);
+  background:var(--bg);width:100%;outline:none;
+  -moz-appearance:textfield;
+}
+.score-num::-webkit-inner-spin-button,.score-num::-webkit-outer-spin-button{-webkit-appearance:none}
+.score-num:focus{border-color:var(--blue);background:#fff}
+
+/* ── Results Table ───────────────────────────────────── */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.rtbl{width:100%;border-collapse:collapse;min-width:360px}
+table.rtbl th{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  color:var(--t2);padding:10px 14px;text-align:left;border-bottom:.5px solid var(--sep);white-space:nowrap;
+}
+table.rtbl td{padding:12px 14px;font-size:15px;border-bottom:.5px solid var(--sep)}
+table.rtbl tr:last-child td{border-bottom:none}
+.td-c{text-align:center}
+.top3 td{font-weight:700}
+.unranked{opacity:.55}
+.sep-row td{background:var(--bg);font-size:12px;color:var(--t2);font-style:italic;padding:7px 14px}
+.rank-detail{font-size:11px;color:var(--t2);font-weight:400;margin-top:1px}
+
+/* ── Stats Grid ──────────────────────────────────────── */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat-box{background:var(--card);border-radius:14px;padding:14px 10px;text-align:center;box-shadow:var(--shadow)}
+.stat-val{font-size:26px;font-weight:800;letter-spacing:-1px;color:var(--blue)}
+.stat-lbl{font-size:11px;color:var(--t2);margin-top:2px;font-weight:500}
+
+/* ── Empty State ─────────────────────────────────────── */
+.empty{text-align:center;padding:52px 24px;color:var(--t2)}
+.empty-ico{font-size:50px;margin-bottom:12px}
+.empty-h{font-size:17px;font-weight:600;color:var(--t1);margin-bottom:6px}
+.empty-p{font-size:14px;line-height:1.5}
+
+/* ── Misc ────────────────────────────────────────────── */
+.act-row{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px}
+.alert{padding:13px 14px;border-radius:12px;font-size:14px;margin-bottom:16px;line-height:1.5}
+.alert-info{background:var(--blue-dim);color:#004ECC}
+.alert-warn{background:var(--orange-dim);color:#8B4500}
+.alert-ok{background:var(--green-dim);color:#1A7A32}
+.hcp-row{display:flex;align-items:center;padding:13px 16px;gap:12px;border-bottom:.5px solid var(--sep)}
+.hcp-row:last-child{border-bottom:none}
+.hcp-name{flex:1;font-size:15px;font-weight:500}
+.hcp-inp{
+  width:90px;border:1.5px solid var(--sep);border-radius:8px;
+  padding:8px 10px;font-size:15px;text-align:center;font-family:inherit;
+  color:var(--t1);background:var(--bg);outline:none;
+}
+.hcp-inp:focus{border-color:var(--blue);background:#fff}
+
+/* ── Settings ────────────────────────────────────────── */
+.setup-step{
+  display:flex;gap:12px;padding:10px 0;border-bottom:.5px solid var(--sep);
+  align-items:flex-start;
+}
+.setup-step:last-child{border-bottom:none}
+.step-num{
+  width:26px;height:26px;border-radius:50%;background:var(--blue);
+  color:#fff;font-size:13px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;
+}
+.step-text{font-size:14px;line-height:1.5;color:var(--t1)}
+.step-text a{color:var(--blue);text-decoration:none;font-weight:600}
+.step-text code{
+  background:var(--fill);padding:1px 5px;border-radius:5px;
+  font-family:monospace;font-size:13px;
+}
+details summary{
+  font-size:14px;font-weight:600;color:var(--blue);
+  cursor:pointer;padding:12px 16px;list-style:none;
+}
+details summary::-webkit-details-marker{display:none}
+details[open] summary{border-bottom:.5px solid var(--sep)}
+details .steps-body{padding:8px 16px 14px}
+
+/* ── Divider label ───────────────────────────────────── */
+.divider-label{
+  text-align:center;font-size:12px;color:var(--t2);
+  padding:12px 0 4px;font-weight:500;
+}
+</style>
+</head>
+<body>
+
+<!-- ── App Header ──────────────────────────────────────── -->
+<header class="app-header">
+  <div class="header-inner">
+    <div class="header-logo">⛳ Bayergolf</div>
+    <button class="sync-badge" onclick="showView('settings')" id="syncBadge">
+      <span class="sync-dot off" id="syncDot"></span>
+      <span id="syncLabel">Einstellungen</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════
+     SPIELER
+═══════════════════════════════════════════════════════ -->
+<div id="v-spieler" class="view active">
+  <div class="main">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h1 class="page-title" style="margin-bottom:0">Spieler</h1>
+      <button class="add-btn" onclick="openPlayerSheet()">+</button>
+    </div>
+    <div id="playerList"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SPIELE
+═══════════════════════════════════════════════════════ -->
+<div id="v-spiele" class="view">
+  <div class="main">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h1 class="page-title" style="margin-bottom:0">Spiele</h1>
+      <button class="add-btn" onclick="openGameSheet()">+</button>
+    </div>
+    <div id="gameList"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     ERGEBNISSE
+═══════════════════════════════════════════════════════ -->
+<div id="v-ergebnisse" class="view">
+  <div class="main">
+    <h1 class="page-title">Ergebnisse</h1>
+    <div id="resultsList"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     GESAMT
+═══════════════════════════════════════════════════════ -->
+<div id="v-gesamt" class="view">
+  <div class="main">
+    <h1 class="page-title">Gesamtwertung</h1>
+    <div id="gesamtContent"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     EINSTELLUNGEN / CLOUD SYNC
+═══════════════════════════════════════════════════════ -->
+<div id="v-settings" class="view">
+  <div class="main">
+    <h1 class="page-title">Einstellungen</h1>
+
+    <!-- Cloud Sync Status -->
+    <div id="cloudStatusCard" class="card" style="margin-bottom:16px">
+      <div class="row" style="cursor:default">
+        <div class="row-icon" style="background:var(--blue-dim)">☁️</div>
+        <div class="row-body">
+          <div class="row-title">Cloud-Synchronisation</div>
+          <div class="row-sub" id="cloudStatusText">Nicht konfiguriert</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="syncNow()" id="syncNowBtn">Sync</button>
+      </div>
+    </div>
+
+    <!-- JSONBin Config -->
+    <div class="form-section">
+      <div class="form-label">JSONBin.io Zugangsdaten</div>
+      <div class="input-group">
+        <div class="input-row">
+          <label class="input-lbl" for="s-apiKey">API-Key</label>
+          <input class="input-field" type="password" id="s-apiKey" placeholder="Aus JSONBin.io kopieren" autocomplete="off">
+        </div>
+        <div class="input-row">
+          <label class="input-lbl" for="s-binId">Bin-ID</label>
+          <input class="input-field" type="text" id="s-binId" placeholder="Wird automatisch erstellt" autocomplete="off">
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-w" onclick="saveCloudSettings()" style="margin-bottom:12px">Verbindung herstellen</button>
+    <button class="btn btn-danger btn-w" onclick="clearCloudSettings()" style="margin-bottom:24px">Verbindung trennen</button>
+
+    <!-- Setup Instructions -->
+    <div class="card" style="margin-bottom:16px">
+      <details>
+        <summary>📖 Einrichtungsanleitung (5 Minuten)</summary>
+        <div class="steps-body">
+          <div class="setup-step">
+            <div class="step-num">1</div>
+            <div class="step-text">Gehe zu <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> und erstelle einen kostenlosen Account.</div>
+          </div>
+          <div class="setup-step">
+            <div class="step-num">2</div>
+            <div class="step-text">Klicke oben rechts auf deinen Namen → <strong>API Keys</strong>. Kopiere den <strong>Master Key</strong> und füge ihn oben in das Feld <em>API-Key</em> ein.</div>
+          </div>
+          <div class="setup-step">
+            <div class="step-num">3</div>
+            <div class="step-text">Tippe auf <strong>„Verbindung herstellen"</strong>. Die App erstellt automatisch einen neuen Datenspeicher (Bin) und trägt die ID ein.</div>
+          </div>
+          <div class="setup-step">
+            <div class="step-num">4</div>
+            <div class="step-text">Fertig! Alle Daten werden jetzt in der Cloud gespeichert und auf allen Geräten synchronisiert. Öffne die App auf einem anderen Gerät, gib denselben API-Key ein – und alle Daten erscheinen.</div>
+          </div>
+          <div class="setup-step">
+            <div class="step-num">💡</div>
+            <div class="step-text"><strong>Tipp:</strong> Der Free-Plan von JSONBin.io bietet 10.000 Anfragen/Monat – das reicht für diese App problemlos.</div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="form-section">
+      <div class="form-label">Datenverwaltung</div>
+      <div class="input-group">
+        <div class="row" style="cursor:pointer" onclick="exportJSON()">
+          <div class="row-icon" style="background:var(--blue-dim)">💾</div>
+          <div class="row-body"><div class="row-title">Daten exportieren</div><div class="row-sub">JSON-Backup herunterladen</div></div>
+        </div>
+        <div class="row" style="cursor:pointer" onclick="importJSONTrigger()">
+          <div class="row-icon" style="background:var(--green-dim)">📥</div>
+          <div class="row-body"><div class="row-title">Daten importieren</div><div class="row-sub">JSON-Backup wiederherstellen</div></div>
+        </div>
+      </div>
+      <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importJSON(event)">
+    </div>
+  </div>
+</div>
+
+<!-- ── Bottom Navigation ──────────────────────────────── -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-tab active" id="nt-spieler"    onclick="showView('spieler')">
+      <span class="nav-icon">👤</span><span>Spieler</span>
+    </div>
+    <div class="nav-tab" id="nt-spiele"     onclick="showView('spiele')">
+      <span class="nav-icon">🏌️</span><span>Spiele</span>
+    </div>
+    <div class="nav-tab" id="nt-ergebnisse" onclick="showView('ergebnisse')">
+      <span class="nav-icon">📊</span><span>Ergebnisse</span>
+    </div>
+    <div class="nav-tab" id="nt-gesamt"     onclick="showView('gesamt')">
+      <span class="nav-icon">🏆</span><span>Gesamt</span>
+    </div>
+    <div class="nav-tab" id="nt-settings"   onclick="showView('settings')">
+      <span class="nav-icon">⚙️</span><span>Einstellungen</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════
+     SHEETS / MODALS
+═══════════════════════════════════════════════════════ -->
+
+<!-- Player Sheet -->
+<div class="overlay" id="playerOverlay" onclick="overlayClose('playerOverlay',event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="sheet-title" id="playerSheetTitle">Spieler hinzufügen</span>
+      <button class="sheet-close" onclick="closeSheet('playerOverlay')">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="form-section">
+        <div class="input-group">
+          <div class="input-row"><label class="input-lbl" for="p-name">Vorname</label><input class="input-field" type="text" id="p-name" placeholder="Name eingeben"></div>
+          <div class="input-row"><label class="input-lbl" for="p-email">E-Mail</label><input class="input-field" type="email" id="p-email" placeholder="optional" autocapitalize="none"></div>
+          <div class="input-row"><label class="input-lbl" for="p-phone">Telefon</label><input class="input-field" type="tel" id="p-phone" placeholder="optional"></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-label">Handicap</div>
+        <div class="input-group">
+          <div class="input-row"><label class="input-lbl" for="p-startHcp">Start-HCP</label><input class="input-field" type="number" id="p-startHcp" placeholder="z. B. 24.0" step="0.1" min="-10" max="54"></div>
+          <div class="input-row"><label class="input-lbl" for="p-hcp">Aktuelles HCP</label><input class="input-field" type="number" id="p-hcp" placeholder="= Start-HCP wenn leer" step="0.1" min="-10" max="54"></div>
+        </div>
+      </div>
+      <input type="hidden" id="p-id">
+      <button class="btn btn-primary btn-w" onclick="savePlayer()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game Sheet -->
+<div class="overlay" id="gameOverlay" onclick="overlayClose('gameOverlay',event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="sheet-title">Neues Spiel</span>
+      <button class="sheet-close" onclick="closeSheet('gameOverlay')">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="form-section">
+        <div class="form-label">Spieldaten</div>
+        <div class="input-group">
+          <div class="input-row"><label class="input-lbl" for="g-date">Datum</label><input class="input-field" type="date" id="g-date"></div>
+          <div class="input-row"><label class="input-lbl" for="g-time">Uhrzeit</label><input class="input-field" type="time" id="g-time"></div>
+          <div class="input-row"><label class="input-lbl" for="g-course">Platz</label><input class="input-field" type="text" id="g-course" placeholder="Name des Golfplatzes"></div>
+          <div class="input-row"><label class="input-lbl" for="g-holes">Löcher</label><select class="input-field" id="g-holes"><option value="9">9 Löcher</option><option value="18" selected>18 Löcher</option></select></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-label">Teilnehmer</div>
+        <div class="input-group" id="gamePlayers"></div>
+      </div>
+      <input type="hidden" id="g-id">
+      <button class="btn btn-primary btn-w" onclick="saveGame()">Spiel anlegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Score Entry Sheet -->
+<div class="overlay" id="scoreOverlay" onclick="overlayClose('scoreOverlay',event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="sheet-title" id="scoreSheetTitle">Ergebnisse eingeben</span>
+      <button class="sheet-close" onclick="closeSheet('scoreOverlay')">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div id="scoreEntryBody"></div>
+      <button class="btn btn-primary btn-w" style="margin-top:14px" onclick="saveScores()">Ergebnisse speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- HCP Update Sheet -->
+<div class="overlay" id="hcpOverlay" onclick="overlayClose('hcpOverlay',event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="sheet-title">Handicaps aktualisieren</span>
+      <button class="sheet-close" onclick="closeSheet('hcpOverlay')">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="alert alert-info">ℹ️ Neues Handicap nach der Runde für jeden Spieler eintragen.</div>
+      <div class="input-group" id="hcpBody"></div>
+      <button class="btn btn-primary btn-w" style="margin-top:14px" onclick="saveHcps()">Handicaps speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════ -->
+<script>
+/* ════════════════════════════════════════════════════
+   DATA & SETTINGS
+════════════════════════════════════════════════════ */
+let DB       = { players:[], games:[] };
+let SETTINGS = { apiKey:'', binId:'' };
+let _activeGame = null;
+let _syncTimer  = null;
+let _syncStatus = 'off'; // off | busy | ok | err
+
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b/';
+
+function loadLocal(){
+  try{
+    const d=localStorage.getItem('bg_v4'); if(d) DB=JSON.parse(d);
+    const s=localStorage.getItem('bg_cfg'); if(s) SETTINGS=JSON.parse(s);
+  }catch(e){}
+}
+function saveLocal(){
+  localStorage.setItem('bg_v4', JSON.stringify(DB));
+}
+function saveSettings(){
+  localStorage.setItem('bg_cfg', JSON.stringify(SETTINGS));
+}
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function fmtDate(s){if(!s)return'';const[y,m,d]=s.split('-');return d+'.'+m+'.'+y}
+
+/* ════════════════════════════════════════════════════
+   CLOUD SYNC  (JSONBin.io)
+════════════════════════════════════════════════════ */
+function setSyncStatus(st, label){
+  _syncStatus=st;
+  const dot=document.getElementById('syncDot');
+  const lbl=document.getElementById('syncLabel');
+  dot.className='sync-dot '+st;
+  if(label) lbl.textContent=label;
+  else if(st==='ok')   lbl.textContent='Synchronisiert';
+  else if(st==='busy') lbl.textContent='Synchronisiert…';
+  else if(st==='err')  lbl.textContent='Sync-Fehler';
+  else                 lbl.textContent='Einstellungen';
+  // update settings view status
+  const stText=document.getElementById('cloudStatusText');
+  if(stText){
+    if(st==='ok')   stText.textContent='Verbunden · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+    else if(st==='busy') stText.textContent='Wird synchronisiert…';
+    else if(st==='err')  stText.textContent='Fehler beim Synchronisieren';
+    else if(!SETTINGS.apiKey) stText.textContent='Nicht konfiguriert';
+  }
+}
+
+async function loadFromCloud(){
+  if(!SETTINGS.apiKey||!SETTINGS.binId) return false;
+  const r=await fetch(JSONBIN_BASE+SETTINGS.binId+'/latest',{
+    headers:{'X-Access-Key':SETTINGS.apiKey}
+  });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const j=await r.json();
+  if(j.record&&(j.record.players||j.record.games)){
+    DB=j.record;
+    saveLocal();
+  }
+  return true;
+}
+
+async function saveToCloud(){
+  if(!SETTINGS.apiKey||!SETTINGS.binId) return false;
+  const r=await fetch(JSONBIN_BASE+SETTINGS.binId,{
+    method:'PUT',
+    headers:{'Content-Type':'application/json','X-Access-Key':SETTINGS.apiKey},
+    body:JSON.stringify(DB)
+  });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return true;
+}
+
+async function createBin(){
+  const r=await fetch(JSONBIN_BASE,{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'X-Access-Key':SETTINGS.apiKey,
+      'X-Bin-Name':'Bayergolf',
+      'X-Bin-Private':'false'
+    },
+    body:JSON.stringify(DB)
+  });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const j=await r.json();
+  return j.metadata.id;
+}
+
+function save(){
+  saveLocal();
+  // debounce cloud sync
+  clearTimeout(_syncTimer);
+  _syncTimer=setTimeout(async()=>{
+    if(!SETTINGS.apiKey||!SETTINGS.binId) return;
+    setSyncStatus('busy');
+    try{
+      await saveToCloud();
+      setSyncStatus('ok');
+    }catch(e){
+      setSyncStatus('err');
+      toast('☁️ Cloud-Sync fehlgeschlagen: '+e.message);
+    }
+  },1500);
+}
+
+async function syncNow(){
+  if(!SETTINGS.apiKey){ toast('Bitte zuerst den API-Key eingeben.'); return; }
+  setSyncStatus('busy');
+  try{
+    await loadFromCloud();
+    setSyncStatus('ok');
+    renderCurrentView();
+    toast('✓ Daten von Cloud geladen');
+  }catch(e){
+    setSyncStatus('err');
+    toast('Fehler: '+e.message);
+  }
+}
+
+async function saveCloudSettings(){
+  const key=document.getElementById('s-apiKey').value.trim();
+  const bid=document.getElementById('s-binId').value.trim();
+  if(!key){ toast('Bitte den API-Key eingeben.'); return; }
+  SETTINGS.apiKey=key;
+  SETTINGS.binId=bid;
+  saveSettings();
+
+  setSyncStatus('busy','Verbinde…');
+  try{
+    if(!SETTINGS.binId){
+      // auto-create bin
+      const newId=await createBin();
+      SETTINGS.binId=newId;
+      document.getElementById('s-binId').value=newId;
+      saveSettings();
+      setSyncStatus('ok');
+      toast('✓ Neue Cloud-Verbindung hergestellt · Bin-ID: '+newId);
+    } else {
+      await loadFromCloud();
+      setSyncStatus('ok');
+      renderCurrentView();
+      toast('✓ Verbindung hergestellt und Daten geladen');
+    }
+  }catch(e){
+    setSyncStatus('err');
+    toast('Verbindung fehlgeschlagen: '+e.message);
+  }
+}
+
+function clearCloudSettings(){
+  if(!confirm('Cloud-Verbindung trennen? Lokale Daten bleiben erhalten.')) return;
+  SETTINGS={apiKey:'',binId:''};
+  saveSettings();
+  document.getElementById('s-apiKey').value='';
+  document.getElementById('s-binId').value='';
+  setSyncStatus('off');
+  toast('Verbindung getrennt');
+}
+
+/* ════════════════════════════════════════════════════
+   NAVIGATION
+════════════════════════════════════════════════════ */
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('v-'+name).classList.add('active');
+  const nt=document.getElementById('nt-'+name);
+  if(nt) nt.classList.add('active');
+  if(name==='spieler')    renderPlayers();
+  if(name==='spiele')     renderGames();
+  if(name==='ergebnisse') renderResults();
+  if(name==='gesamt')     renderGesamt();
+  if(name==='settings')   renderSettingsView();
+}
+
+function renderCurrentView(){
+  const active=document.querySelector('.view.active');
+  if(!active) return;
+  const id=active.id.replace('v-','');
+  if(id==='spieler')    renderPlayers();
+  if(id==='spiele')     renderGames();
+  if(id==='ergebnisse') renderResults();
+  if(id==='gesamt')     renderGesamt();
+}
+
+function openSheet(id){ document.getElementById(id).classList.add('open'); }
+function closeSheet(id){ document.getElementById(id).classList.remove('open'); }
+function overlayClose(id,e){ if(e.target===document.getElementById(id)) closeSheet(id); }
+
+/* ════════════════════════════════════════════════════
+   PLAYER MANAGEMENT
+════════════════════════════════════════════════════ */
+function openPlayerSheet(pid){
+  document.getElementById('playerSheetTitle').textContent=pid?'Spieler bearbeiten':'Spieler hinzufügen';
+  const p=pid?DB.players.find(x=>x.id===pid):null;
+  document.getElementById('p-id').value    =pid||'';
+  document.getElementById('p-name').value  =p?p.name:'';
+  document.getElementById('p-email').value =p?p.email||'':'';
+  document.getElementById('p-phone').value =p?p.phone||'':'';
+  document.getElementById('p-startHcp').value=p?p.startHcp:'';
+  document.getElementById('p-hcp').value   =p?p.hcp:'';
+  openSheet('playerOverlay');
+}
+
+function savePlayer(){
+  const id      =document.getElementById('p-id').value;
+  const name    =document.getElementById('p-name').value.trim();
+  const email   =document.getElementById('p-email').value.trim();
+  const phone   =document.getElementById('p-phone').value.trim();
+  const startHcp=parseFloat(document.getElementById('p-startHcp').value);
+  const hcpRaw  =parseFloat(document.getElementById('p-hcp').value);
+  const hcp     =isNaN(hcpRaw)?startHcp:hcpRaw;
+  if(!name){toast('Bitte einen Namen eingeben.');return}
+  if(isNaN(startHcp)){toast('Bitte ein gültiges Start-Handicap eingeben.');return}
+  if(id){
+    const i=DB.players.findIndex(p=>p.id===id);
+    if(i>=0) DB.players[i]={...DB.players[i],name,email,phone,startHcp,hcp};
+  }else{
+    DB.players.push({id:uid(),name,email,phone,startHcp,hcp});
+  }
+  save(); closeSheet('playerOverlay'); renderPlayers();
+}
+
+function deletePlayer(id){
+  if(!confirm('Spieler wirklich löschen?'))return;
+  DB.players=DB.players.filter(p=>p.id!==id); save(); renderPlayers();
+}
+
+function renderPlayers(){
+  const el=document.getElementById('playerList');
+  if(!DB.players.length){
+    el.innerHTML=`<div class="card"><div class="empty"><div class="empty-ico">👤</div><div class="empty-h">Noch keine Spieler</div><div class="empty-p">Tippe auf <strong>+</strong> um den ersten Spieler hinzuzufügen.</div></div></div>`;return;
+  }
+  el.innerHTML=`<div class="card">`+DB.players.map(p=>`
+    <div class="row">
+      <div class="row-icon" style="background:var(--blue-dim)">👤</div>
+      <div class="row-body">
+        <div class="row-title">${esc(p.name)}</div>
+        <div class="row-sub">${p.email?esc(p.email)+' · ':''}HCP&nbsp;${p.hcp}</div>
+      </div>
+      <span class="chip chip-blue">HCP&nbsp;${p.hcp}</span>
+      <button class="icon-btn icon-btn-blue" onclick="openPlayerSheet('${p.id}')">✏️</button>
+      <button class="icon-btn icon-btn-red"  onclick="deletePlayer('${p.id}')">✕</button>
+    </div>`).join('')+`</div>`;
+}
+
+/* ════════════════════════════════════════════════════
+   GAME MANAGEMENT
+════════════════════════════════════════════════════ */
+function openGameSheet(){
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('g-id').value='';
+  document.getElementById('g-date').value=today;
+  document.getElementById('g-time').value='09:00';
+  document.getElementById('g-course').value='';
+  document.getElementById('g-holes').value='18';
+  const cp=document.getElementById('gamePlayers');
+  if(!DB.players.length){
+    cp.innerHTML=`<div style="padding:14px 16px;color:var(--t2);font-size:14px;text-align:center">Zuerst Spieler anlegen</div>`;
+  }else{
+    cp.innerHTML=DB.players.map(p=>`
+      <div class="cb-item">
+        <input type="checkbox" id="cb-${p.id}" value="${p.id}">
+        <label class="cb-label" for="cb-${p.id}">${esc(p.name)}</label>
+        <span class="chip chip-blue">HCP&nbsp;${p.hcp}</span>
+      </div>`).join('');
+  }
+  openSheet('gameOverlay');
+}
+
+function saveGame(){
+  const date  =document.getElementById('g-date').value;
+  const time  =document.getElementById('g-time').value;
+  const course=document.getElementById('g-course').value.trim();
+  const holes =parseInt(document.getElementById('g-holes').value);
+  if(!date){toast('Bitte ein Datum wählen.');return}
+  if(!course){toast('Bitte einen Golfplatz eingeben.');return}
+  const participants=[];
+  DB.players.forEach(p=>{
+    const cb=document.getElementById('cb-'+p.id);
+    if(cb&&cb.checked) participants.push({playerId:p.id,playerName:p.name,hcpAtTime:p.hcp,stableford:null,ladies:null});
+  });
+  if(!participants.length){toast('Bitte mindestens einen Teilnehmer auswählen.');return}
+  DB.games.push({id:uid(),date,time,course,holes,participants,done:false});
+  save(); closeSheet('gameOverlay'); renderGames();
+}
+
+function deleteGame(id){
+  if(!confirm('Spiel wirklich löschen?'))return;
+  DB.games=DB.games.filter(g=>g.id!==id); save(); renderGames();
+}
+
+function renderGames(){
+  const el=document.getElementById('gameList');
+  if(!DB.games.length){
+    el.innerHTML=`<div class="card"><div class="empty"><div class="empty-ico">🏌️</div><div class="empty-h">Noch keine Spiele</div><div class="empty-p">Tippe auf <strong>+</strong> um ein Spiel anzulegen.</div></div></div>`;return;
+  }
+  const sorted=[...DB.games].sort((a,b)=>b.date.localeCompare(a.date));
+  el.innerHTML=`<div class="card">`+sorted.map(g=>`
+    <div class="row" style="cursor:pointer" onclick="goToGame('${g.id}')">
+      <div class="row-icon" style="background:var(--green-dim)">⛳</div>
+      <div class="row-body">
+        <div class="row-title">${esc(g.course)}</div>
+        <div class="row-sub">${fmtDate(g.date)} · ${g.time} · ${g.holes}&nbsp;Löcher · ${g.participants.length}&nbsp;Spieler</div>
+      </div>
+      <span class="dot ${g.done?'dot-green':'dot-orange'}"></span>
+      <button class="icon-btn icon-btn-red" onclick="event.stopPropagation();deleteGame('${g.id}')">✕</button>
+    </div>`).join('')+`</div>`;
+}
+
+function goToGame(id){ _activeGame=id; showView('ergebnisse'); }
+
+/* ════════════════════════════════════════════════════
+   SCORE ENTRY
+════════════════════════════════════════════════════ */
+function openScoreSheet(gid){
+  _activeGame=gid;
+  const g=DB.games.find(x=>x.id===gid); if(!g) return;
+  document.getElementById('scoreSheetTitle').textContent=esc(g.course)+' · '+fmtDate(g.date);
+  document.getElementById('scoreEntryBody').innerHTML=`
+    <div class="card" style="overflow:hidden">
+      <div class="score-grid-head">
+        <span>Spieler</span><span style="text-align:center">Stableford</span><span style="text-align:center">Ladies</span>
+      </div>`+
+    g.participants.map(p=>`
+      <div class="score-grid-row">
+        <div style="font-size:15px;font-weight:500">${esc(p.playerName)}</div>
+        <input class="score-num" type="number" id="sf-${p.playerId}" value="${p.stableford!==null?p.stableford:''}" placeholder="Pkt." min="0" max="108">
+        <input class="score-num" type="number" id="ld-${p.playerId}" value="${p.ladies!==null?p.ladies:''}" placeholder="0" min="0">
+      </div>`).join('')+
+    `</div>`;
+  openSheet('scoreOverlay');
+}
+
+function saveScores(){
+  const g=DB.games.find(x=>x.id===_activeGame); if(!g) return;
+  let ok=true;
+  g.participants.forEach(p=>{
+    const sv=parseInt((document.getElementById('sf-'+p.playerId)||{}).value);
+    const lv=parseInt((document.getElementById('ld-'+p.playerId)||{}).value);
+    if(isNaN(sv)||isNaN(lv)){ok=false;return}
+    p.stableford=sv; p.ladies=lv;
+  });
+  if(!ok){toast('Bitte alle Felder ausfüllen.');return}
+  g.done=true; save(); closeSheet('scoreOverlay'); renderResults();
+}
+
+/* ════════════════════════════════════════════════════
+   HCP UPDATE
+════════════════════════════════════════════════════ */
+function openHcpSheet(gid){
+  _activeGame=gid;
+  const g=DB.games.find(x=>x.id===gid); if(!g) return;
+  document.getElementById('hcpBody').innerHTML=g.participants.map(p=>{
+    const pl=DB.players.find(x=>x.id===p.playerId);
+    return `<div class="hcp-row">
+      <span class="hcp-name">${esc(p.playerName)}</span>
+      <input class="hcp-inp" type="number" id="nh-${p.playerId}" value="${pl?pl.hcp:p.hcpAtTime}" step="0.1" min="-10" max="54">
+    </div>`;
+  }).join('');
+  openSheet('hcpOverlay');
+}
+
+function saveHcps(){
+  const g=DB.games.find(x=>x.id===_activeGame); if(!g) return;
+  g.participants.forEach(p=>{
+    const inp=document.getElementById('nh-'+p.playerId); if(!inp) return;
+    const v=parseFloat(inp.value); if(isNaN(v)) return;
+    const pl=DB.players.find(x=>x.id===p.playerId);
+    if(pl) pl.hcp=v;
+  });
+  save(); closeSheet('hcpOverlay'); renderResults(); toast('✓ Handicaps aktualisiert');
+}
+
+/* ════════════════════════════════════════════════════
+   RESULTS RENDER
+════════════════════════════════════════════════════ */
+function sortedResults(g){
+  // Sort ascending by stableford: lowest = Platz 1
+  return [...g.participants].filter(p=>p.stableford!==null).sort((a,b)=>a.stableford-b.stableford);
+}
+
+function renderOneGame(g){
+  if(!g.done){
+    return `<div class="card" style="margin-bottom:16px">
+      <div class="row">
+        <div class="row-icon" style="background:var(--orange-dim)">⏳</div>
+        <div class="row-body">
+          <div class="row-title">${esc(g.course)}</div>
+          <div class="row-sub">${fmtDate(g.date)} · ${g.holes} Löcher · ${g.participants.length} Spieler</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openScoreSheet('${g.id}')">Eingabe</button>
+      </div>
+    </div>`;
+  }
+  const ranked=sortedResults(g);
+  const medals=['🥇','🥈','🥉'];
+  const trows=ranked.map((p,i)=>{
+    const r=i+1, bold=r<=3;
+    const medal=r<=3?medals[r-1]:`<span style="color:var(--t2);font-weight:600">${r}.</span>`;
+    return `<tr class="${bold?'top3':''}">
+      <td class="td-c">${medal}</td>
+      <td>${esc(p.playerName)}</td>
+      <td class="td-c">${p.stableford}</td>
+      <td class="td-c">${p.ladies}&nbsp;👩</td>
+      <td class="td-c"><span class="chip chip-blue">HCP&nbsp;${p.hcpAtTime}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="card" style="margin-bottom:24px">
+    <div class="card-head" style="padding-bottom:14px">
+      <div>
+        <div class="card-title">⛳ ${esc(g.course)}</div>
+        <div class="card-sub">${fmtDate(g.date)} · ${g.time} · ${g.holes} Löcher</div>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="rtbl">
+        <thead><tr>
+          <th class="td-c">Platz</th><th>Spieler</th>
+          <th class="td-c">Stableford</th><th class="td-c">Ladies</th><th class="td-c">HCP</th>
+        </tr></thead>
+        <tbody>${trows}</tbody>
+      </table>
+    </div>
+    <div class="act-row">
+      <button class="btn btn-secondary btn-sm" onclick="openScoreSheet('${g.id}')">✏️ Bearbeiten</button>
+      <button class="btn btn-secondary btn-sm" onclick="openHcpSheet('${g.id}')">📝 HCP</button>
+      <button class="btn btn-success btn-sm"   onclick="pdfGame('${g.id}')">📄 PDF</button>
+    </div>
+  </div>`;
+}
+
+function renderResults(){
+  const el=document.getElementById('resultsList');
+  if(!DB.games.length){
+    el.innerHTML=`<div class="card"><div class="empty"><div class="empty-ico">📊</div><div class="empty-h">Keine Ergebnisse</div><div class="empty-p">Lege zuerst ein Spiel an und trage die Ergebnisse ein.</div></div></div>`;return;
+  }
+  const sorted=[...DB.games].sort((a,b)=>b.date.localeCompare(a.date));
+  el.innerHTML=sorted.map(renderOneGame).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   GESAMTWERTUNG  –  Rang-Summen-Wertung
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Pro Spiel erhält jeder Teilnehmer seinen Platz
+   (1, 2, 3 …). Die Plätze werden addiert.
+   Niedrigste Summe = bester Gesamtrang.
+   z. B. Platz 3 + Platz 4 + Platz 1 = 8 Punkte → Rang 1
+════════════════════════════════════════════════════ */
+function calcGesamt(){
+  const stats={};
+  const doneGames=DB.games.filter(g=>g.done);
+
+  doneGames.forEach(game=>{
+    const ranked=sortedResults(game); // sorted asc by stableford → Platz 1 = index 0
+    ranked.forEach((p,i)=>{
+      const rank=i+1;
+      if(!stats[p.playerId]){
+        const pl=DB.players.find(x=>x.id===p.playerId);
+        stats[p.playerId]={
+          id:p.playerId, name:p.playerName,
+          hcp:pl?pl.hcp:p.hcpAtTime,
+          rankSum:0, ladies:0, games:0, ranks:[]
+        };
+      }
+      stats[p.playerId].rankSum+=rank;
+      stats[p.playerId].ladies+=(p.ladies||0);
+      stats[p.playerId].games+=1;
+      stats[p.playerId].ranks.push(rank);
+    });
+  });
+
+  const all=Object.values(stats);
+  // Ranked: ≥ 3 Teilnahmen, sort by rankSum asc
+  const ranked  =all.filter(p=>p.games>=3).sort((a,b)=>a.rankSum-b.rankSum);
+  // Unranked: < 3 Teilnahmen, alphabetical, shown at bottom but not scored
+  const unranked=all.filter(p=>p.games<3).sort((a,b)=>a.name.localeCompare(b.name));
+  return {all, ranked, unranked, totalGames:doneGames.length};
+}
+
+function renderGesamt(){
+  const el=document.getElementById('gesamtContent');
+  const doneGames=DB.games.filter(g=>g.done);
+
+  if(!doneGames.length){
+    el.innerHTML=`<div class="card"><div class="empty"><div class="empty-ico">🏆</div><div class="empty-h">Keine Daten vorhanden</div><div class="empty-p">Sobald Spielergebnisse eingetragen sind, erscheint hier die Gesamtrangliste.</div></div></div>`;return;
+  }
+
+  const {all,ranked,unranked,totalGames}=calcGesamt();
+  const totalLadies=all.reduce((s,p)=>s+p.ladies,0);
+  const ladiesKing=[...all].sort((a,b)=>b.ladies-a.ladies)[0];
+  const medals=['🥇','🥈','🥉'];
+
+  /* explanation banner */
+  const infoHtml=`<div class="alert alert-info" style="margin-bottom:16px">
+    📐 <strong>Wertungsformel:</strong> Summe der Platzierungen aus allen Spielen. Niedrigste Summe gewinnt.<br>
+    <span style="font-size:12px;opacity:.8">Beispiel: Platz 3 + Platz 4 + Platz 1 = 8 Punkte → Rang 1</span>
+  </div>`;
+
+  /* stats */
+  const statsHtml=`<div class="stats-row">
+    <div class="stat-box"><div class="stat-val">${totalGames}</div><div class="stat-lbl">Runden</div></div>
+    <div class="stat-box"><div class="stat-val">${all.length}</div><div class="stat-lbl">Spieler</div></div>
+    <div class="stat-box"><div class="stat-val">${totalLadies}</div><div class="stat-lbl">Ladies ges.</div></div>
+  </div>`;
+
+  /* ladies champion */
+  const ladiesHtml=ladiesKing?`<div class="card" style="margin-bottom:16px">
+    <div class="row">
+      <div class="row-icon" style="background:var(--orange-dim)">👑</div>
+      <div class="row-body">
+        <div class="row-title">Ladies-Champion</div>
+        <div class="row-sub">${esc(ladiesKing.name)} · ${ladiesKing.ladies} Ladies insgesamt</div>
+      </div>
+      <span style="font-size:24px">👩</span>
+    </div>
+  </div>`:'';
+
+  /* ranked rows */
+  const rankedRows=ranked.map((p,i)=>{
+    const r=i+1, bold=r<=3;
+    const medal=r<=3?medals[r-1]:`<span style="color:var(--t2);font-weight:600">${r}.</span>`;
+    const rankDetail=p.ranks.join('+');
+    return `<tr class="${bold?'top3':''}">
+      <td class="td-c">${medal}</td>
+      <td>
+        ${esc(p.name)}
+        <div class="rank-detail">${rankDetail} = ${p.rankSum} Pkt.</div>
+      </td>
+      <td class="td-c">${p.games}</td>
+      <td class="td-c"><strong>${p.rankSum}</strong></td>
+      <td class="td-c">${p.ladies}&nbsp;👩</td>
+      <td class="td-c"><span class="chip chip-blue">HCP&nbsp;${p.hcp}</span></td>
+    </tr>`;
+  }).join('');
+
+  /* unranked rows */
+  const unrankedRows=unranked.map(p=>`
+    <tr class="unranked">
+      <td class="td-c"><span class="chip chip-gray">–</span></td>
+      <td>${esc(p.name)}<div class="rank-detail">${p.ranks.join('+')||'–'}</div></td>
+      <td class="td-c">${p.games}</td>
+      <td class="td-c">${p.rankSum}</td>
+      <td class="td-c">${p.ladies}&nbsp;👩</td>
+      <td class="td-c"><span class="chip chip-blue">HCP&nbsp;${p.hcp}</span></td>
+    </tr>`).join('');
+
+  const sepRow=(ranked.length&&unranked.length)?`<tr class="sep-row"><td colspan="6">Nicht gewertet · weniger als 3 Teilnahmen</td></tr>`:'';
+
+  el.innerHTML=infoHtml+statsHtml+ladiesHtml+`
+    <div class="card">
+      <div class="card-head" style="padding-bottom:14px">
+        <div>
+          <div class="card-title">🏆 Gesamtrangliste</div>
+          <div class="card-sub">Saison ${new Date().getFullYear()} · Rang-Summen-Wertung</div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table class="rtbl">
+          <thead><tr>
+            <th class="td-c">Rang</th><th>Spieler</th>
+            <th class="td-c">Spiele</th><th class="td-c">Rang-Summe</th>
+            <th class="td-c">Ladies</th><th class="td-c">HCP</th>
+          </tr></thead>
+          <tbody>${rankedRows}${sepRow}${unrankedRows}</tbody>
+        </table>
+      </div>
+      <div class="act-row">
+        <button class="btn btn-success btn-sm" onclick="pdfGesamt()">📄 PDF exportieren</button>
+      </div>
+    </div>`;
+}
+
+/* ════════════════════════════════════════════════════
+   SETTINGS VIEW
+════════════════════════════════════════════════════ */
+function renderSettingsView(){
+  document.getElementById('s-apiKey').value=SETTINGS.apiKey||'';
+  document.getElementById('s-binId').value=SETTINGS.binId||'';
+  const stText=document.getElementById('cloudStatusText');
+  if(SETTINGS.apiKey&&SETTINGS.binId){
+    stText.textContent=_syncStatus==='ok'?'Verbunden · zuletzt synchronisiert: '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'Konfiguriert';
+  } else {
+    stText.textContent='Nicht konfiguriert – bitte API-Key eingeben';
+  }
+}
+
+/* ════════════════════════════════════════════════════
+   PDF EXPORT
+════════════════════════════════════════════════════ */
+function pdfHeader(doc,title,sub){
+  doc.setFillColor(0,122,255); doc.rect(0,0,210,14,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('BAYERGOLF', 14, 9.5);
+  doc.setTextColor(0,0,0); doc.setFontSize(17); doc.setFont('helvetica','bold');
+  doc.text(title,14,26);
+  doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+  doc.text(sub,14,33);
+  doc.setDrawColor(200,200,200); doc.setLineWidth(.3); doc.line(14,37,196,37);
+}
+function pdfFooter(doc){
+  doc.setFontSize(8); doc.setTextColor(150,150,150);
+  doc.text('Bayergolf · erstellt am '+fmtDate(new Date().toISOString().slice(0,10)),14,287);
+}
+
+function pdfGame(gid){
+  if(!window.jspdf){toast('PDF-Bibliothek lädt…');return}
+  const g=DB.games.find(x=>x.id===gid); if(!g) return;
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  pdfHeader(doc,g.course,`${fmtDate(g.date)}  ·  ${g.time}  ·  ${g.holes} Löcher  ·  ${g.participants.length} Teilnehmer`);
+  const ranked=sortedResults(g);
+  const medals=['1. Platz','2. Platz','3. Platz'];
+  const body=ranked.map((p,i)=>[i<3?medals[i]:`${i+1}.`,p.playerName,p.stableford,p.ladies,p.hcpAtTime]);
+  doc.autoTable({
+    head:[['Platz','Spieler','Stableford','Ladies','HCP']],
+    body, startY:42,
+    styles:{font:'helvetica',fontSize:10,cellPadding:4},
+    headStyles:{fillColor:[0,122,255],textColor:255,fontStyle:'bold',fontSize:9},
+    alternateRowStyles:{fillColor:[247,247,252]},
+    columnStyles:{0:{cellWidth:25,halign:'center'},2:{cellWidth:26,halign:'center'},3:{cellWidth:22,halign:'center'},4:{cellWidth:20,halign:'center'}},
+    didParseCell:(d)=>{if(d.section==='body'&&d.row.index<3)d.cell.styles.fontStyle='bold';}
+  });
+  pdfFooter(doc);
+  doc.save(`Bayergolf_${g.course.replace(/\s+/g,'_')}_${g.date}.pdf`);
+}
+
+function pdfGesamt(){
+  if(!window.jspdf){toast('PDF-Bibliothek lädt…');return}
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const doneGames=DB.games.filter(g=>g.done);
+  const{ranked,unranked}=calcGesamt();
+  pdfHeader(doc,
+    `Gesamtrangliste ${new Date().getFullYear()}`,
+    `${doneGames.length} gespielte Runden  ·  Rang-Summen-Wertung  ·  Stand: ${fmtDate(new Date().toISOString().slice(0,10))}`
+  );
+  const medals=['1. Platz','2. Platz','3. Platz'];
+  const rankedBody=ranked.map((p,i)=>[
+    i<3?medals[i]:`${i+1}.`, p.name, p.games,
+    `${p.rankSum} (${p.ranks.join('+')})`, p.ladies, p.hcp
+  ]);
+  const unrankedBody=unranked.map(p=>['–',p.name,p.games,p.rankSum,p.ladies,p.hcp]);
+  const sep=unranked.length&&ranked.length?[['','Nicht gewertet (< 3 Teilnahmen)','','','','']]:[];
+  doc.autoTable({
+    head:[['Rang','Spieler','Spiele','Rang-Summe','Ladies','HCP']],
+    body:[...rankedBody,...sep,...unrankedBody],
+    startY:42,
+    styles:{font:'helvetica',fontSize:9,cellPadding:4},
+    headStyles:{fillColor:[0,122,255],textColor:255,fontStyle:'bold',fontSize:9},
+    alternateRowStyles:{fillColor:[247,247,252]},
+    columnStyles:{0:{cellWidth:22,halign:'center'},2:{cellWidth:18,halign:'center'},3:{cellWidth:34,halign:'center'},4:{cellWidth:20,halign:'center'},5:{cellWidth:18,halign:'center'}},
+    didParseCell:(d)=>{
+      if(d.section==='body'){
+        if(d.row.index<ranked.length&&d.row.index<3)d.cell.styles.fontStyle='bold';
+        if(d.row.raw[0]==='')d.cell.styles.textColor=[150,150,150];
+        if(d.row.raw[0]==='–')d.cell.styles.textColor=[160,160,160];
+      }
+    }
+  });
+  pdfFooter(doc);
+  doc.save(`Bayergolf_Gesamtwertung_${new Date().getFullYear()}.pdf`);
+}
+
+/* ════════════════════════════════════════════════════
+   IMPORT / EXPORT
+════════════════════════════════════════════════════ */
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`Bayergolf_Backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+}
+function importJSONTrigger(){ document.getElementById('importFileInput').click(); }
+function importJSON(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(!d.players&&!d.games){throw new Error('Ungültige Datei')}
+      if(!confirm('Alle aktuellen Daten werden überschrieben. Fortfahren?'))return;
+      DB=d; save(); renderCurrentView(); toast('✓ Daten importiert');
+    }catch(err){ toast('Fehler beim Importieren: '+err.message); }
+  };
+  r.readAsText(f);
+  e.target.value='';
+}
+
+/* ════════════════════════════════════════════════════
+   TOAST
+════════════════════════════════════════════════════ */
+function toast(msg){
+  let t=document.getElementById('_toast');
+  if(!t){
+    t=document.createElement('div'); t.id='_toast';
+    Object.assign(t.style,{
+      position:'fixed',bottom:'100px',left:'50%',transform:'translateX(-50%)',
+      background:'rgba(0,0,0,.82)',color:'#fff',padding:'10px 18px',
+      borderRadius:'20px',fontSize:'14px',zIndex:'9999',
+      backdropFilter:'blur(10px)',whiteSpace:'nowrap',transition:'opacity .3s',
+      maxWidth:'calc(100vw - 40px)',textAlign:'center',wordBreak:'break-word'
+    });
+    document.body.appendChild(t);
+  }
+  t.textContent=msg; t.style.opacity='1';
+  clearTimeout(t._t); t._t=setTimeout(()=>{t.style.opacity='0';},2800);
+}
+
+/* ════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  loadLocal();
+  renderPlayers();
+
+  // populate settings fields
+  document.getElementById('s-apiKey').value=SETTINGS.apiKey||'';
+  document.getElementById('s-binId').value=SETTINGS.binId||'';
+
+  if(SETTINGS.apiKey && SETTINGS.binId){
+    setSyncStatus('busy','Lädt…');
+    try{
+      await loadFromCloud();
+      setSyncStatus('ok');
+      renderPlayers(); // refresh after cloud load
+    }catch(e){
+      setSyncStatus('err');
+      // fallback: local data already loaded
+    }
+  } else {
+    setSyncStatus('off');
+  }
+});
+</script>
+</body>
+</html>
