@@ -1015,9 +1015,11 @@ function calcGesamt(){
     return {...p, drops, droppedRanks, effectiveSum};
   });
 
-  // All players ranked: ascending by effectiveSum; tiebreak: more games first
-  all.sort((a,b)=>a.effectiveSum-b.effectiveSum || b.games-a.games);
-  return {all, totalGames:doneGames.length};
+  // Ranked: ≥ 2 Teilnahmen → aufsteigend nach effectiveSum
+  const ranked  = all.filter(p=>p.games>=2).sort((a,b)=>a.effectiveSum-b.effectiveSum || b.games-a.games);
+  // Unranked: < 2 Teilnahmen → aufsteigend nach effectiveSum
+  const unranked = all.filter(p=>p.games<2).sort((a,b)=>a.effectiveSum-b.effectiveSum);
+  return {all, ranked, unranked, totalGames:doneGames.length};
 }
 
 // Returns HTML for rank list with dropped ranks struck through
@@ -1053,7 +1055,7 @@ function renderGesamt(){
     el.innerHTML=`<div class="card"><div class="empty"><div class="empty-ico">🏆</div><div class="empty-h">Keine Daten vorhanden</div><div class="empty-p">Sobald Spielergebnisse eingetragen sind, erscheint hier die Gesamtrangliste.</div></div></div>`;return;
   }
 
-  const {all,totalGames}=calcGesamt();
+  const {all,ranked,unranked,totalGames}=calcGesamt();
   const totalLadies=all.reduce((s,p)=>s+p.ladies,0);
   const ladiesKing=[...all].sort((a,b)=>b.ladies-a.ladies)[0];
   const medals=['🥇','🥈','🥉'];
@@ -1061,13 +1063,13 @@ function renderGesamt(){
   /* explanation banner */
   const infoHtml=`<div class="alert alert-info" style="margin-bottom:16px">
     📐 <strong>Wertungsformel:</strong> Summe der Platzierungen · niedrigste Summe gewinnt.<br>
-    <span style="font-size:12px;opacity:.85">Streichresultate: ab 3 Spielen wird 1 schlechtester Platz gestrichen, ab 4 Spielen werden 2 gestrichen.</span>
+    <span style="font-size:12px;opacity:.85">Gewertet ab 2 Teilnahmen · Streichresultate: ab 3 Spielen 1 Streicher, ab 4 Spielen 2 Streicher.</span>
   </div>`;
 
   /* stats */
   const statsHtml=`<div class="stats-row">
     <div class="stat-box"><div class="stat-val">${totalGames}</div><div class="stat-lbl">Runden</div></div>
-    <div class="stat-box"><div class="stat-val">${all.length}</div><div class="stat-lbl">Spieler</div></div>
+    <div class="stat-box"><div class="stat-val">${ranked.length}</div><div class="stat-lbl">Gewertet</div></div>
     <div class="stat-box"><div class="stat-val">${totalLadies}</div><div class="stat-lbl">Ladies ges.</div></div>
   </div>`;
 
@@ -1083,24 +1085,48 @@ function renderGesamt(){
     </div>
   </div>`:'';
 
-  /* all rows – every player ranked */
-  const allRows=all.map((p,i)=>{
-    const r=i+1, bold=r<=3;
-    const medal=r<=3?medals[r-1]:`<span style="color:var(--t2);font-weight:600">${r}.</span>`;
+  /* helper: build a table row */
+  function makeRow(p, rankLabel, bold, dimmed){
     const detailHtml=rankDetailHtml(p.ranks, p.droppedRanks);
     const dropChip=p.drops>0
       ?`<span class="chip chip-orange" style="font-size:10px;margin-left:4px">${p.drops}&nbsp;Str.</span>`:'';
-    return `<tr class="${bold?'top3':''}">
-      <td class="td-c">${medal}</td>
+    const style=dimmed?'opacity:.5;font-weight:400':'';
+    return `<tr class="${bold?'top3':''}" style="${style}">
+      <td class="td-c">${rankLabel}</td>
       <td>
         <span>${esc(p.name)}</span>${dropChip}
         <div class="rank-detail">${detailHtml} = ${p.effectiveSum} Pkt.</div>
       </td>
       <td class="td-c">${p.games}</td>
-      <td class="td-c"><strong>${p.effectiveSum}</strong></td>
+      <td class="td-c">${bold?`<strong>${p.effectiveSum}</strong>`:p.effectiveSum}</td>
       <td class="td-c">${p.ladies}&nbsp;👩</td>
       <td class="td-c"><span class="chip chip-blue">HCP&nbsp;${p.hcp}</span></td>
     </tr>`;
+  }
+
+  /* ranked rows (≥ 2 Teilnahmen) */
+  const rankedRows=ranked.map((p,i)=>{
+    const r=i+1, bold=r<=3;
+    const medal=r<=3?medals[r-1]:`<span style="color:var(--t2);font-weight:600">${r}.</span>`;
+    return makeRow(p, medal, bold, false);
+  }).join('');
+
+  /* separator */
+  const sepRow=unranked.length?`
+    <tr>
+      <td colspan="6" style="padding:0">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg)">
+          <div style="flex:1;height:.5px;background:var(--sep)"></div>
+          <span style="font-size:11px;color:var(--t2);font-weight:600;white-space:nowrap">OHNE GESAMTWERTUNG</span>
+          <div style="flex:1;height:.5px;background:var(--sep)"></div>
+        </div>
+      </td>
+    </tr>`:'';
+
+  /* unranked rows (< 2 Teilnahmen) – dimmed, no rank number */
+  const unrankedRows=unranked.map(p=>{
+    const rankLabel=`<span style="color:var(--t3)">–</span>`;
+    return makeRow(p, rankLabel, false, true);
   }).join('');
 
   el.innerHTML=infoHtml+statsHtml+ladiesHtml+`
@@ -1118,7 +1144,7 @@ function renderGesamt(){
             <th class="td-c">Spiele</th><th class="td-c">Rang-Summe</th>
             <th class="td-c">Ladies</th><th class="td-c">HCP</th>
           </tr></thead>
-          <tbody>${allRows}</tbody>
+          <tbody>${rankedRows}${sepRow}${unrankedRows}</tbody>
         </table>
       </div>
       <div class="act-row">
@@ -1186,27 +1212,36 @@ function pdfGesamt(){
   const{jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const doneGames=DB.games.filter(g=>g.done);
-  const{all}=calcGesamt();
+  const{ranked,unranked}=calcGesamt();
   pdfHeader(doc,
     `Gesamtrangliste ${new Date().getFullYear()}`,
     `${doneGames.length} gespielte Runden  ·  Rang-Summen-Wertung mit Streichresultaten  ·  Stand: ${fmtDate(new Date().toISOString().slice(0,10))}`
   );
   const medals=['1. Platz','2. Platz','3. Platz'];
-  const body=all.map((p,i)=>{
+  const rankedBody=ranked.map((p,i)=>{
     const rank=i<3?medals[i]:`${i+1}.`;
     const detail=rankDetailText(p.ranks,p.droppedRanks);
     return [rank, p.name, p.games, `${p.effectiveSum} (${detail})`, p.ladies, p.hcp];
   });
+  const sepBody=unranked.length?[['','── Ohne Gesamtwertung ──','','','','']]:[];
+  const unrankedBody=unranked.map(p=>{
+    const detail=rankDetailText(p.ranks,p.droppedRanks);
+    return ['–', p.name, p.games, `${p.effectiveSum} (${detail})`, p.ladies, p.hcp];
+  });
   doc.autoTable({
     head:[['Rang','Spieler','Spiele','Rang-Summe','Ladies','HCP']],
-    body,
+    body:[...rankedBody,...sepBody,...unrankedBody],
     startY:42,
     styles:{font:'helvetica',fontSize:9,cellPadding:4},
     headStyles:{fillColor:[0,122,255],textColor:255,fontStyle:'bold',fontSize:9},
     alternateRowStyles:{fillColor:[247,247,252]},
     columnStyles:{0:{cellWidth:22,halign:'center'},2:{cellWidth:18,halign:'center'},3:{cellWidth:38,halign:'center'},4:{cellWidth:20,halign:'center'},5:{cellWidth:18,halign:'center'}},
     didParseCell:(d)=>{
-      if(d.section==='body'&&d.row.index<3) d.cell.styles.fontStyle='bold';
+      if(d.section==='body'){
+        if(d.row.index<ranked.length&&d.row.index<3) d.cell.styles.fontStyle='bold';
+        if(d.row.raw[0]==='') { d.cell.styles.textColor=[150,150,150]; d.cell.styles.fontStyle='italic'; }
+        if(d.row.raw[0]==='–') d.cell.styles.textColor=[180,180,180];
+      }
     }
   });
   pdfFooter(doc);
