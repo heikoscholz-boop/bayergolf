@@ -439,7 +439,8 @@ details .steps-body{padding:8px 16px 14px}
     <div class="sheet-body">
       <div class="form-section">
         <div class="input-group">
-          <div class="input-row"><label class="input-lbl" for="p-name">Vorname</label><input class="input-field" type="text" id="p-name" placeholder="Name eingeben"></div>
+          <div class="input-row"><label class="input-lbl" for="p-name">Vorname</label><input class="input-field" type="text" id="p-name" placeholder="Vorname eingeben"></div>
+          <div class="input-row"><label class="input-lbl" for="p-lastName">Nachname</label><input class="input-field" type="text" id="p-lastName" placeholder="Nachname eingeben"></div>
           <div class="input-row"><label class="input-lbl" for="p-email">E-Mail</label><input class="input-field" type="email" id="p-email" placeholder="optional" autocapitalize="none"></div>
           <div class="input-row"><label class="input-lbl" for="p-phone">Telefon</label><input class="input-field" type="tel" id="p-phone" placeholder="optional"></div>
         </div>
@@ -715,30 +716,34 @@ function overlayClose(id,e){ if(e.target===document.getElementById(id)) closeShe
 function openPlayerSheet(pid){
   document.getElementById('playerSheetTitle').textContent=pid?'Spieler bearbeiten':'Spieler hinzufügen';
   const p=pid?DB.players.find(x=>x.id===pid):null;
-  document.getElementById('p-id').value    =pid||'';
-  document.getElementById('p-name').value  =p?p.name:'';
-  document.getElementById('p-email').value =p?p.email||'':'';
+  document.getElementById('p-id').value      =pid||'';
+  document.getElementById('p-name').value    =p?p.name:'';
+  document.getElementById('p-lastName').value=p?p.lastName||'':'';
+  document.getElementById('p-email').value   =p?p.email||'':'';
   document.getElementById('p-phone').value =p?p.phone||'':'';
   document.getElementById('p-startHcp').value=p?p.startHcp:'';
   document.getElementById('p-hcp').value   =p?p.hcp:'';
   openSheet('playerOverlay');
 }
 
+function fullName(p){ return [p.name, p.lastName].filter(Boolean).join(' '); }
+
 function savePlayer(){
   const id      =document.getElementById('p-id').value;
   const name    =document.getElementById('p-name').value.trim();
+  const lastName=document.getElementById('p-lastName').value.trim();
   const email   =document.getElementById('p-email').value.trim();
   const phone   =document.getElementById('p-phone').value.trim();
   const startHcp=parseFloat(document.getElementById('p-startHcp').value);
   const hcpRaw  =parseFloat(document.getElementById('p-hcp').value);
   const hcp     =isNaN(hcpRaw)?startHcp:hcpRaw;
-  if(!name){toast('Bitte einen Namen eingeben.');return}
+  if(!name){toast('Bitte einen Vornamen eingeben.');return}
   if(isNaN(startHcp)){toast('Bitte ein gültiges Start-Handicap eingeben.');return}
   if(id){
     const i=DB.players.findIndex(p=>p.id===id);
-    if(i>=0) DB.players[i]={...DB.players[i],name,email,phone,startHcp,hcp};
+    if(i>=0) DB.players[i]={...DB.players[i],name,lastName,email,phone,startHcp,hcp};
   }else{
-    DB.players.push({id:uid(),name,email,phone,startHcp,hcp});
+    DB.players.push({id:uid(),name,lastName,email,phone,startHcp,hcp});
   }
   save(); closeSheet('playerOverlay'); renderPlayers();
 }
@@ -757,7 +762,7 @@ function renderPlayers(){
     <div class="row">
       <div class="row-icon" style="background:var(--blue-dim)">👤</div>
       <div class="row-body">
-        <div class="row-title">${esc(p.name)}</div>
+        <div class="row-title">${esc(fullName(p))}</div>
         <div class="row-sub">${p.email?esc(p.email)+' · ':''}HCP&nbsp;${p.hcp}</div>
       </div>
       <span class="chip chip-blue">HCP&nbsp;${p.hcp}</span>
@@ -783,7 +788,7 @@ function openGameSheet(){
     cp.innerHTML=DB.players.map(p=>`
       <div class="cb-item">
         <input type="checkbox" id="cb-${p.id}" value="${p.id}">
-        <label class="cb-label" for="cb-${p.id}">${esc(p.name)}</label>
+        <label class="cb-label" for="cb-${p.id}">${esc(fullName(p))}</label>
         <span class="chip chip-blue">HCP&nbsp;${p.hcp}</span>
       </div>`).join('');
   }
@@ -800,7 +805,7 @@ function saveGame(){
   const participants=[];
   DB.players.forEach(p=>{
     const cb=document.getElementById('cb-'+p.id);
-    if(cb&&cb.checked) participants.push({playerId:p.id,playerName:p.name,hcpAtTime:p.hcp,stableford:null,ladies:null});
+    if(cb&&cb.checked) participants.push({playerId:p.id,playerName:fullName(p),hcpAtTime:p.hcp,stableford:null,ladies:null});
   });
   if(!participants.length){toast('Bitte mindestens einen Teilnehmer auswählen.');return}
   DB.games.push({id:uid(),date,time,course,holes,participants,done:false});
