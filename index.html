@@ -191,6 +191,10 @@ table.rtbl th{
 }
 table.rtbl td{padding:12px 14px;font-size:15px;border-bottom:.5px solid var(--sep)}
 table.rtbl tr:last-child td{border-bottom:none}
+/* kompakte Variante für Spielergebnisliste */
+table.rtbl.game th{padding:8px 8px;font-size:10px;letter-spacing:.2px}
+table.rtbl.game td{padding:9px 8px;font-size:14px}
+table.rtbl.game{min-width:0}
 .td-c{text-align:center}
 .top3 td{font-weight:700}
 .unranked{opacity:.55}
@@ -758,7 +762,8 @@ function renderPlayers(){
   if(!DB.players.length){
     el.innerHTML=`<div class="card"><div class="empty"><div class="empty-ico">👤</div><div class="empty-h">Noch keine Spieler</div><div class="empty-p">Tippe auf <strong>+</strong> um den ersten Spieler hinzuzufügen.</div></div></div>`;return;
   }
-  el.innerHTML=`<div class="card">`+DB.players.map(p=>`
+  const sorted=[...DB.players].sort((a,b)=>(a.lastName||'').localeCompare(b.lastName||'','de')||(a.name||'').localeCompare(b.name||'','de'));
+  el.innerHTML=`<div class="card">`+sorted.map(p=>`
     <div class="row">
       <div class="row-icon" style="background:var(--blue-dim)">👤</div>
       <div class="row-body">
@@ -844,17 +849,38 @@ function openScoreSheet(gid){
   _activeGame=gid;
   const g=DB.games.find(x=>x.id===gid); if(!g) return;
   document.getElementById('scoreSheetTitle').textContent=esc(g.course)+' · '+fmtDate(g.date);
+
+  // Alphabetisch nach Nachname sortieren (letztes Wort des playerName)
+  const byLastName=[...g.participants].sort((a,b)=>{
+    const la=a.playerName.split(' ').pop().toLowerCase();
+    const lb=b.playerName.split(' ').pop().toLowerCase();
+    return la.localeCompare(lb,'de');
+  });
+
+  const colStyle='display:grid;grid-template-columns:1fr 68px 82px 68px;gap:5px;align-items:center;';
   document.getElementById('scoreEntryBody').innerHTML=`
     <div class="card" style="overflow:hidden">
-      <div class="score-grid-head">
-        <span>Spieler</span><span style="text-align:center">Stableford</span><span style="text-align:center">Ladies</span>
+      <div style="${colStyle}padding:8px 14px;background:var(--bg);
+        font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--t2);">
+        <span>Spieler</span>
+        <span style="text-align:center">Stabf.</span>
+        <span style="text-align:center">n. HCP</span>
+        <span style="text-align:center">Ladies</span>
       </div>`+
-    g.participants.map(p=>`
-      <div class="score-grid-row">
-        <div style="font-size:15px;font-weight:500">${esc(p.playerName)}</div>
-        <input class="score-num" type="number" id="sf-${p.playerId}" value="${p.stableford!==null?p.stableford:''}" placeholder="Pkt." min="0" max="108">
-        <input class="score-num" type="number" id="ld-${p.playerId}" value="${p.ladies!==null?p.ladies:''}" placeholder="0" min="0">
-      </div>`).join('')+
+    byLastName.map(p=>{
+      const pl=DB.players.find(x=>x.id===p.playerId);
+      const curHcp=pl?pl.hcp:p.hcpAtTime;
+      return `
+      <div style="${colStyle}padding:10px 14px;background:var(--card);border-top:.5px solid var(--sep);">
+        <div style="font-size:14px;font-weight:500;line-height:1.2">${esc(p.playerName)}</div>
+        <input class="score-num" type="number" inputmode="numeric" id="sf-${p.playerId}"
+               value="${p.stableford!==null?p.stableford:''}" placeholder="0" min="0" max="108">
+        <input class="score-num" type="number" inputmode="decimal"  id="hcpnew-${p.playerId}"
+               value="${curHcp}" placeholder="${curHcp}" step="0.1" min="-10" max="54">
+        <input class="score-num" type="number" inputmode="numeric" id="ld-${p.playerId}"
+               value="${p.ladies!==null?p.ladies:''}" placeholder="0" min="0">
+      </div>`;
+    }).join('')+
     `</div>`;
   openSheet('scoreOverlay');
 }
@@ -863,12 +889,24 @@ function saveScores(){
   const g=DB.games.find(x=>x.id===_activeGame); if(!g) return;
   let ok=true;
   g.participants.forEach(p=>{
-    const sv=parseInt((document.getElementById('sf-'+p.playerId)||{}).value);
-    const lv=parseInt((document.getElementById('ld-'+p.playerId)||{}).value);
-    if(isNaN(sv)||isNaN(lv)){ok=false;return}
+    const sfEl  =document.getElementById('sf-'+p.playerId);
+    const ldEl  =document.getElementById('ld-'+p.playerId);
+    const hcpEl =document.getElementById('hcpnew-'+p.playerId);
+    if(!sfEl||!ldEl){return;}
+    const sv=parseInt(sfEl.value);
+    const lv=parseInt(ldEl.value);
+    if(isNaN(sv)||isNaN(lv)){ok=false;return;}
     p.stableford=sv; p.ladies=lv;
+    // Neues HCP direkt speichern
+    if(hcpEl){
+      const hv=parseFloat(hcpEl.value);
+      if(!isNaN(hv)){
+        const pl=DB.players.find(x=>x.id===p.playerId);
+        if(pl) pl.hcp=Math.round(hv*10)/10; // auf 1 Dezimalstelle
+      }
+    }
   });
-  if(!ok){toast('Bitte alle Felder ausfüllen.');return}
+  if(!ok){toast('Bitte Stableford und Ladies für alle Spieler ausfüllen.');return;}
   g.done=true; save(); closeSheet('scoreOverlay'); renderResults();
 }
 
@@ -907,6 +945,18 @@ function sortedResults(g){
   return [...g.participants].filter(p=>p.stableford!==null).sort((a,b)=>b.stableford-a.stableford);
 }
 
+// Einzelspiel: gleiche Stableford-Punkte → gleicher Platz (höher = besser)
+// Bsp: 20,19,15,15,13 → Platz 1,2,3,3,5
+function tiedRank(sorted, idx){
+  return sorted.filter(x=>x.stableford > sorted[idx].stableford).length + 1;
+}
+
+// Gesamtliste: gleiche Rang-Summe → gleicher Gesamtrang (niedriger = besser)
+// Bsp: 4,8,10,10,12 → Rang 1,2,3,3,5
+function tiedRankGesamt(sorted, idx){
+  return sorted.filter(x=>x.effectiveSum < sorted[idx].effectiveSum).length + 1;
+}
+
 function renderOneGame(g){
   if(!g.done){
     return `<div class="card" style="margin-bottom:16px">
@@ -923,14 +973,15 @@ function renderOneGame(g){
   const ranked=sortedResults(g);
   const medals=['🥇','🥈','🥉'];
   const trows=ranked.map((p,i)=>{
-    const r=i+1, bold=r<=3;
+    const r=tiedRank(ranked,i);
+    const bold=r<=3;
     const medal=r<=3?medals[r-1]:`<span style="color:var(--t2);font-weight:600">${r}.</span>`;
     return `<tr class="${bold?'top3':''}">
       <td class="td-c">${medal}</td>
       <td>${esc(p.playerName)}</td>
       <td class="td-c">${p.stableford}</td>
-      <td class="td-c">${p.ladies}&nbsp;👩</td>
-      <td class="td-c"><span class="chip chip-blue">HCP&nbsp;${p.hcpAtTime}</span></td>
+      <td class="td-c" style="color:var(--t2)">${p.hcpAtTime}</td>
+      <td class="td-c">${p.ladies}</td>
     </tr>`;
   }).join('');
 
@@ -942,17 +993,16 @@ function renderOneGame(g){
       </div>
     </div>
     <div class="tbl-wrap">
-      <table class="rtbl">
+      <table class="rtbl game">
         <thead><tr>
           <th class="td-c">Platz</th><th>Spieler</th>
-          <th class="td-c">Stableford</th><th class="td-c">Ladies</th><th class="td-c">HCP</th>
+          <th class="td-c">Stfd.</th><th class="td-c">HCP</th><th class="td-c">👩</th>
         </tr></thead>
         <tbody>${trows}</tbody>
       </table>
     </div>
     <div class="act-row">
       <button class="btn btn-secondary btn-sm" onclick="openScoreSheet('${g.id}')">✏️ Bearbeiten</button>
-      <button class="btn btn-secondary btn-sm" onclick="openHcpSheet('${g.id}')">📝 HCP</button>
       <button class="btn btn-success btn-sm"   onclick="pdfGame('${g.id}')">📄 PDF</button>
     </div>
   </div>`;
@@ -990,7 +1040,7 @@ function calcGesamt(){
   doneGames.forEach(game=>{
     const ranked=sortedResults(game); // DESC: highest stableford = Platz 1
     ranked.forEach((p,i)=>{
-      const rank=i+1;
+      const rank=tiedRank(ranked,i); // Gleichstand → gleicher Platz
       if(!stats[p.playerId]){
         const pl=DB.players.find(x=>x.id===p.playerId);
         stats[p.playerId]={
@@ -1099,14 +1149,15 @@ function renderGesamt(){
       </td>
       <td class="td-c">${p.games}</td>
       <td class="td-c">${bold?`<strong>${p.effectiveSum}</strong>`:p.effectiveSum}</td>
-      <td class="td-c">${p.ladies}&nbsp;👩</td>
+      <td class="td-c">${p.ladies}</td>
       <td class="td-c"><span class="chip chip-blue">HCP&nbsp;${p.hcp}</span></td>
     </tr>`;
   }
 
   /* ranked rows (≥ 2 Teilnahmen) */
   const rankedRows=ranked.map((p,i)=>{
-    const r=i+1, bold=r<=3;
+    const r=tiedRankGesamt(ranked,i);
+    const bold=r<=3;
     const medal=r<=3?medals[r-1]:`<span style="color:var(--t2);font-weight:600">${r}.</span>`;
     return makeRow(p, medal, bold, false);
   }).join('');
@@ -1141,8 +1192,8 @@ function renderGesamt(){
         <table class="rtbl">
           <thead><tr>
             <th class="td-c">Rang</th><th>Spieler</th>
-            <th class="td-c">Spiele</th><th class="td-c">Rang-Summe</th>
-            <th class="td-c">Ladies</th><th class="td-c">HCP</th>
+            <th class="td-c">Spiele</th><th class="td-c">Rang</th>
+            <th class="td-c">👩</th><th class="td-c">HCP</th>
           </tr></thead>
           <tbody>${rankedRows}${sepRow}${unrankedRows}</tbody>
         </table>
@@ -1193,15 +1244,25 @@ function pdfGame(gid){
   pdfHeader(doc,g.course,`${fmtDate(g.date)}  ·  ${g.time}  ·  ${g.holes} Löcher  ·  ${g.participants.length} Teilnehmer`);
   const ranked=sortedResults(g);
   const medals=['1. Platz','2. Platz','3. Platz'];
-  const body=ranked.map((p,i)=>[i<3?medals[i]:`${i+1}.`,p.playerName,p.stableford,p.ladies,p.hcpAtTime]);
+  const body=ranked.map((p,i)=>{
+    const r=tiedRank(ranked,i);
+    const rankStr=r<=3?medals[r-1]:`${r}.`;
+    // Reihenfolge: Platz | Spieler | Stfd. | HCP | Ladies
+    return [rankStr, p.playerName, p.stableford, p.hcpAtTime, p.ladies];
+  });
   doc.autoTable({
-    head:[['Platz','Spieler','Stableford','Ladies','HCP']],
+    head:[['Platz','Spieler','Stfd.','HCP','Ladies']],
     body, startY:42,
     styles:{font:'helvetica',fontSize:10,cellPadding:4},
     headStyles:{fillColor:[0,122,255],textColor:255,fontStyle:'bold',fontSize:9},
     alternateRowStyles:{fillColor:[247,247,252]},
-    columnStyles:{0:{cellWidth:25,halign:'center'},2:{cellWidth:26,halign:'center'},3:{cellWidth:22,halign:'center'},4:{cellWidth:20,halign:'center'}},
-    didParseCell:(d)=>{if(d.section==='body'&&d.row.index<3)d.cell.styles.fontStyle='bold';}
+    columnStyles:{
+      0:{cellWidth:25,halign:'center'},
+      2:{cellWidth:22,halign:'center'},
+      3:{cellWidth:22,halign:'center'},
+      4:{cellWidth:20,halign:'center'}
+    },
+    didParseCell:(d)=>{if(d.section==='body'&&tiedRank(ranked,d.row.index)<=3)d.cell.styles.fontStyle='bold';}
   });
   pdfFooter(doc);
   doc.save(`Bayergolf_${g.course.replace(/\s+/g,'_')}_${g.date}.pdf`);
@@ -1219,7 +1280,8 @@ function pdfGesamt(){
   );
   const medals=['1. Platz','2. Platz','3. Platz'];
   const rankedBody=ranked.map((p,i)=>{
-    const rank=i<3?medals[i]:`${i+1}.`;
+    const r=tiedRankGesamt(ranked,i);
+    const rank=r<=3?medals[r-1]:`${r}.`;
     const detail=rankDetailText(p.ranks,p.droppedRanks);
     return [rank, p.name, p.games, `${p.effectiveSum} (${detail})`, p.ladies, p.hcp];
   });
@@ -1229,7 +1291,7 @@ function pdfGesamt(){
     return ['–', p.name, p.games, `${p.effectiveSum} (${detail})`, p.ladies, p.hcp];
   });
   doc.autoTable({
-    head:[['Rang','Spieler','Spiele','Rang-Summe','Ladies','HCP']],
+    head:[['Rang','Spieler','Spiele','Rang','Ladies (Anz.)','HCP']],
     body:[...rankedBody,...sepBody,...unrankedBody],
     startY:42,
     styles:{font:'helvetica',fontSize:9,cellPadding:4},
@@ -1238,7 +1300,7 @@ function pdfGesamt(){
     columnStyles:{0:{cellWidth:22,halign:'center'},2:{cellWidth:18,halign:'center'},3:{cellWidth:38,halign:'center'},4:{cellWidth:20,halign:'center'},5:{cellWidth:18,halign:'center'}},
     didParseCell:(d)=>{
       if(d.section==='body'){
-        if(d.row.index<ranked.length&&d.row.index<3) d.cell.styles.fontStyle='bold';
+        if(d.row.index<ranked.length&&tiedRankGesamt(ranked,d.row.index)<=3) d.cell.styles.fontStyle='bold';
         if(d.row.raw[0]==='') { d.cell.styles.textColor=[150,150,150]; d.cell.styles.fontStyle='italic'; }
         if(d.row.raw[0]==='–') d.cell.styles.textColor=[180,180,180];
       }
