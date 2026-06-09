@@ -903,8 +903,8 @@ function saveHcps(){
    RESULTS RENDER
 ════════════════════════════════════════════════════ */
 function sortedResults(g){
-  // Sort ascending by stableford: lowest = Platz 1
-  return [...g.participants].filter(p=>p.stableford!==null).sort((a,b)=>a.stableford-b.stableford);
+  // Sort DESCENDING by stableford: highest = Platz 1
+  return [...g.participants].filter(p=>p.stableford!==null).sort((a,b)=>b.stableford-a.stableford);
 }
 
 function renderOneGame(g){
@@ -975,12 +975,20 @@ function renderResults(){
    Niedrigste Summe = bester Gesamtrang.
    z. B. Platz 3 + Platz 4 + Platz 1 = 8 Punkte → Rang 1
 ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════
+   Streichresultate-Regel:
+   1–2 Spiele  → kein Streicher
+   3   Spiele  → 1 schlechtester Platz gestrichen
+   ≥4  Spiele  → 2 schlechteste Plätze gestrichen
+════════════════════════════════════════════════════ */
+function calcDrops(games){ return Math.min(2, Math.max(0, games-2)); }
+
 function calcGesamt(){
   const stats={};
   const doneGames=DB.games.filter(g=>g.done);
 
   doneGames.forEach(game=>{
-    const ranked=sortedResults(game); // sorted asc by stableford → Platz 1 = index 0
+    const ranked=sortedResults(game); // DESC: highest stableford = Platz 1
     ranked.forEach((p,i)=>{
       const rank=i+1;
       if(!stats[p.playerId]){
@@ -988,22 +996,53 @@ function calcGesamt(){
         stats[p.playerId]={
           id:p.playerId, name:p.playerName,
           hcp:pl?pl.hcp:p.hcpAtTime,
-          rankSum:0, ladies:0, games:0, ranks:[]
+          ladies:0, games:0, ranks:[]
         };
       }
-      stats[p.playerId].rankSum+=rank;
+      stats[p.playerId].ranks.push(rank);
       stats[p.playerId].ladies+=(p.ladies||0);
       stats[p.playerId].games+=1;
-      stats[p.playerId].ranks.push(rank);
     });
   });
 
-  const all=Object.values(stats);
-  // Ranked: ≥ 3 Teilnahmen, sort by rankSum asc
-  const ranked  =all.filter(p=>p.games>=3).sort((a,b)=>a.rankSum-b.rankSum);
-  // Unranked: < 3 Teilnahmen, alphabetical, shown at bottom but not scored
-  const unranked=all.filter(p=>p.games<3).sort((a,b)=>a.name.localeCompare(b.name));
-  return {all, ranked, unranked, totalGames:doneGames.length};
+  // Apply drop scores and compute effective sum
+  const all=Object.values(stats).map(p=>{
+    const drops=calcDrops(p.games);
+    // Worst = highest rank numbers → sort desc, slice first `drops`
+    const sortedDesc=[...p.ranks].sort((a,b)=>b-a);
+    const droppedRanks=sortedDesc.slice(0,drops);      // ranks to ignore
+    const effectiveSum=sortedDesc.slice(drops).reduce((s,r)=>s+r,0);
+    return {...p, drops, droppedRanks, effectiveSum};
+  });
+
+  // All players ranked: ascending by effectiveSum; tiebreak: more games first
+  all.sort((a,b)=>a.effectiveSum-b.effectiveSum || b.games-a.games);
+  return {all, totalGames:doneGames.length};
+}
+
+// Returns HTML for rank list with dropped ranks struck through
+function rankDetailHtml(ranks, droppedRanks){
+  const toDrop=[...droppedRanks];
+  const parts=ranks.map(r=>{
+    const idx=toDrop.indexOf(r);
+    if(idx>=0){ toDrop.splice(idx,1); return `<s style="color:var(--t3)">${r}</s>`; }
+    return String(r);
+  });
+  return parts.join('+');
+}
+
+// Plain text version for PDF
+function rankDetailText(ranks, droppedRanks){
+  const toDrop=[...droppedRanks];
+  const kept=[], dropped=[];
+  ranks.forEach(r=>{
+    const idx=toDrop.indexOf(r);
+    if(idx>=0){toDrop.splice(idx,1);dropped.push(r);}
+    else kept.push(r);
+  });
+  let s=kept.join('+');
+  if(dropped.length) s+=` (Str: ${dropped.join('+')})`;
+  return s;
 }
 
 function renderGesamt(){
@@ -1014,15 +1053,15 @@ function renderGesamt(){
     el.innerHTML=`<div class="card"><div class="empty"><div class="empty-ico">🏆</div><div class="empty-h">Keine Daten vorhanden</div><div class="empty-p">Sobald Spielergebnisse eingetragen sind, erscheint hier die Gesamtrangliste.</div></div></div>`;return;
   }
 
-  const {all,ranked,unranked,totalGames}=calcGesamt();
+  const {all,totalGames}=calcGesamt();
   const totalLadies=all.reduce((s,p)=>s+p.ladies,0);
   const ladiesKing=[...all].sort((a,b)=>b.ladies-a.ladies)[0];
   const medals=['🥇','🥈','🥉'];
 
   /* explanation banner */
   const infoHtml=`<div class="alert alert-info" style="margin-bottom:16px">
-    📐 <strong>Wertungsformel:</strong> Summe der Platzierungen aus allen Spielen. Niedrigste Summe gewinnt.<br>
-    <span style="font-size:12px;opacity:.8">Beispiel: Platz 3 + Platz 4 + Platz 1 = 8 Punkte → Rang 1</span>
+    📐 <strong>Wertungsformel:</strong> Summe der Platzierungen · niedrigste Summe gewinnt.<br>
+    <span style="font-size:12px;opacity:.85">Streichresultate: ab 3 Spielen wird 1 schlechtester Platz gestrichen, ab 4 Spielen werden 2 gestrichen.</span>
   </div>`;
 
   /* stats */
@@ -1033,7 +1072,7 @@ function renderGesamt(){
   </div>`;
 
   /* ladies champion */
-  const ladiesHtml=ladiesKing?`<div class="card" style="margin-bottom:16px">
+  const ladiesHtml=ladiesKing&&ladiesKing.ladies>0?`<div class="card" style="margin-bottom:16px">
     <div class="row">
       <div class="row-icon" style="background:var(--orange-dim)">👑</div>
       <div class="row-body">
@@ -1044,43 +1083,32 @@ function renderGesamt(){
     </div>
   </div>`:'';
 
-  /* ranked rows */
-  const rankedRows=ranked.map((p,i)=>{
+  /* all rows – every player ranked */
+  const allRows=all.map((p,i)=>{
     const r=i+1, bold=r<=3;
     const medal=r<=3?medals[r-1]:`<span style="color:var(--t2);font-weight:600">${r}.</span>`;
-    const rankDetail=p.ranks.join('+');
+    const detailHtml=rankDetailHtml(p.ranks, p.droppedRanks);
+    const dropChip=p.drops>0
+      ?`<span class="chip chip-orange" style="font-size:10px;margin-left:4px">${p.drops}&nbsp;Str.</span>`:'';
     return `<tr class="${bold?'top3':''}">
       <td class="td-c">${medal}</td>
       <td>
-        ${esc(p.name)}
-        <div class="rank-detail">${rankDetail} = ${p.rankSum} Pkt.</div>
+        <span>${esc(p.name)}</span>${dropChip}
+        <div class="rank-detail">${detailHtml} = ${p.effectiveSum} Pkt.</div>
       </td>
       <td class="td-c">${p.games}</td>
-      <td class="td-c"><strong>${p.rankSum}</strong></td>
+      <td class="td-c"><strong>${p.effectiveSum}</strong></td>
       <td class="td-c">${p.ladies}&nbsp;👩</td>
       <td class="td-c"><span class="chip chip-blue">HCP&nbsp;${p.hcp}</span></td>
     </tr>`;
   }).join('');
-
-  /* unranked rows */
-  const unrankedRows=unranked.map(p=>`
-    <tr class="unranked">
-      <td class="td-c"><span class="chip chip-gray">–</span></td>
-      <td>${esc(p.name)}<div class="rank-detail">${p.ranks.join('+')||'–'}</div></td>
-      <td class="td-c">${p.games}</td>
-      <td class="td-c">${p.rankSum}</td>
-      <td class="td-c">${p.ladies}&nbsp;👩</td>
-      <td class="td-c"><span class="chip chip-blue">HCP&nbsp;${p.hcp}</span></td>
-    </tr>`).join('');
-
-  const sepRow=(ranked.length&&unranked.length)?`<tr class="sep-row"><td colspan="6">Nicht gewertet · weniger als 3 Teilnahmen</td></tr>`:'';
 
   el.innerHTML=infoHtml+statsHtml+ladiesHtml+`
     <div class="card">
       <div class="card-head" style="padding-bottom:14px">
         <div>
           <div class="card-title">🏆 Gesamtrangliste</div>
-          <div class="card-sub">Saison ${new Date().getFullYear()} · Rang-Summen-Wertung</div>
+          <div class="card-sub">Saison ${new Date().getFullYear()} · Rang-Summen-Wertung mit Streichresultaten</div>
         </div>
       </div>
       <div class="tbl-wrap">
@@ -1090,7 +1118,7 @@ function renderGesamt(){
             <th class="td-c">Spiele</th><th class="td-c">Rang-Summe</th>
             <th class="td-c">Ladies</th><th class="td-c">HCP</th>
           </tr></thead>
-          <tbody>${rankedRows}${sepRow}${unrankedRows}</tbody>
+          <tbody>${allRows}</tbody>
         </table>
       </div>
       <div class="act-row">
@@ -1158,32 +1186,27 @@ function pdfGesamt(){
   const{jsPDF}=window.jspdf;
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   const doneGames=DB.games.filter(g=>g.done);
-  const{ranked,unranked}=calcGesamt();
+  const{all}=calcGesamt();
   pdfHeader(doc,
     `Gesamtrangliste ${new Date().getFullYear()}`,
-    `${doneGames.length} gespielte Runden  ·  Rang-Summen-Wertung  ·  Stand: ${fmtDate(new Date().toISOString().slice(0,10))}`
+    `${doneGames.length} gespielte Runden  ·  Rang-Summen-Wertung mit Streichresultaten  ·  Stand: ${fmtDate(new Date().toISOString().slice(0,10))}`
   );
   const medals=['1. Platz','2. Platz','3. Platz'];
-  const rankedBody=ranked.map((p,i)=>[
-    i<3?medals[i]:`${i+1}.`, p.name, p.games,
-    `${p.rankSum} (${p.ranks.join('+')})`, p.ladies, p.hcp
-  ]);
-  const unrankedBody=unranked.map(p=>['–',p.name,p.games,p.rankSum,p.ladies,p.hcp]);
-  const sep=unranked.length&&ranked.length?[['','Nicht gewertet (< 3 Teilnahmen)','','','','']]:[];
+  const body=all.map((p,i)=>{
+    const rank=i<3?medals[i]:`${i+1}.`;
+    const detail=rankDetailText(p.ranks,p.droppedRanks);
+    return [rank, p.name, p.games, `${p.effectiveSum} (${detail})`, p.ladies, p.hcp];
+  });
   doc.autoTable({
     head:[['Rang','Spieler','Spiele','Rang-Summe','Ladies','HCP']],
-    body:[...rankedBody,...sep,...unrankedBody],
+    body,
     startY:42,
     styles:{font:'helvetica',fontSize:9,cellPadding:4},
     headStyles:{fillColor:[0,122,255],textColor:255,fontStyle:'bold',fontSize:9},
     alternateRowStyles:{fillColor:[247,247,252]},
-    columnStyles:{0:{cellWidth:22,halign:'center'},2:{cellWidth:18,halign:'center'},3:{cellWidth:34,halign:'center'},4:{cellWidth:20,halign:'center'},5:{cellWidth:18,halign:'center'}},
+    columnStyles:{0:{cellWidth:22,halign:'center'},2:{cellWidth:18,halign:'center'},3:{cellWidth:38,halign:'center'},4:{cellWidth:20,halign:'center'},5:{cellWidth:18,halign:'center'}},
     didParseCell:(d)=>{
-      if(d.section==='body'){
-        if(d.row.index<ranked.length&&d.row.index<3)d.cell.styles.fontStyle='bold';
-        if(d.row.raw[0]==='')d.cell.styles.textColor=[150,150,150];
-        if(d.row.raw[0]==='–')d.cell.styles.textColor=[160,160,160];
-      }
+      if(d.section==='body'&&d.row.index<3) d.cell.styles.fontStyle='bold';
     }
   });
   pdfFooter(doc);
