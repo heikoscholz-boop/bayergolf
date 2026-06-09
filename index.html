@@ -462,6 +462,25 @@ details .steps-body{padding:8px 16px 14px}
   </div>
 </div>
 
+<!-- Participants Sheet -->
+<div class="overlay" id="participantsOverlay" onclick="overlayClose('participantsOverlay',event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <span class="sheet-title" id="participantsTitle">Teilnehmer bearbeiten</span>
+      <button class="sheet-close" onclick="closeSheet('participantsOverlay')">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="alert alert-info" style="margin-bottom:12px">
+        ℹ️ Spieler anhaken = nimmt teil · abhaken = nimmt nicht teil.<br>
+        <span style="font-size:12px">Bereits eingetragene Ergebnisse bleiben gespeichert.</span>
+      </div>
+      <div class="input-group" id="participantsList"></div>
+      <button class="btn btn-primary btn-w" style="margin-top:14px" onclick="saveParticipants()">Speichern</button>
+    </div>
+  </div>
+</div>
+
 <!-- Game Sheet -->
 <div class="overlay" id="gameOverlay" onclick="overlayClose('gameOverlay',event)">
   <div class="sheet">
@@ -843,6 +862,60 @@ function renderGames(){
 function goToGame(id){ _activeGame=id; showView('ergebnisse'); }
 
 /* ════════════════════════════════════════════════════
+   PARTICIPANTS MANAGEMENT
+════════════════════════════════════════════════════ */
+function openParticipantsSheet(gid){
+  _activeGame=gid;
+  const g=DB.games.find(x=>x.id===gid); if(!g) return;
+  document.getElementById('participantsTitle').textContent='Teilnehmer — '+esc(g.course)+' '+fmtDate(g.date);
+
+  // Alle Spieler alphabetisch nach Nachname, Checkbox = bereits dabei
+  const sortedPlayers=[...DB.players].sort((a,b)=>
+    (a.lastName||'').localeCompare(b.lastName||'','de')||(a.name||'').localeCompare(b.name||'','de')
+  );
+  const participating=new Set(g.participants.map(p=>p.playerId));
+
+  document.getElementById('participantsList').innerHTML=sortedPlayers.map(p=>{
+    const inGame=participating.has(p.id);
+    const hasScore=inGame && g.participants.find(x=>x.playerId===p.id)?.stableford!==null;
+    return `<div class="cb-item">
+      <input type="checkbox" id="pt-${p.id}" value="${p.id}" ${inGame?'checked':''}>
+      <label class="cb-label" for="pt-${p.id}">${esc(fullName(p))}</label>
+      <span class="chip ${inGame?'chip-blue':'chip-gray'}">HCP&nbsp;${p.hcp}</span>
+      ${hasScore?`<span class="chip chip-green" style="font-size:10px">✓ Ergebnis</span>`:''}
+    </div>`;
+  }).join('');
+
+  openSheet('participantsOverlay');
+}
+
+function saveParticipants(){
+  const g=DB.games.find(x=>x.id===_activeGame); if(!g) return;
+  const newIds=new Set();
+  DB.players.forEach(p=>{ const cb=document.getElementById('pt-'+p.id); if(cb&&cb.checked) newIds.add(p.id); });
+
+  if(newIds.size===0){ toast('Bitte mindestens einen Teilnehmer auswählen.'); return; }
+
+  // Neue Teilnehmerliste aufbauen
+  const updated=[];
+  // Bestehende Teilnehmer behalten (inkl. eingetragener Ergebnisse)
+  g.participants.forEach(p=>{ if(newIds.has(p.playerId)) updated.push(p); });
+  // Neu hinzugefügte Spieler ergänzen
+  newIds.forEach(pid=>{
+    if(!g.participants.find(p=>p.playerId===pid)){
+      const pl=DB.players.find(x=>x.id===pid);
+      if(pl) updated.push({playerId:pl.id, playerName:fullName(pl), hcpAtTime:pl.hcp, stableford:null, ladies:null});
+    }
+  });
+
+  g.participants=updated;
+  // Wenn noch nicht alle Ergebnisse eingetragen sind, Status zurücksetzen
+  if(updated.some(p=>p.stableford===null)) g.done=false;
+  save(); closeSheet('participantsOverlay'); renderResults();
+  toast('✓ Teilnehmer aktualisiert');
+}
+
+/* ════════════════════════════════════════════════════
    SCORE ENTRY
 ════════════════════════════════════════════════════ */
 function openScoreSheet(gid){
@@ -966,7 +1039,8 @@ function renderOneGame(g){
           <div class="row-title">${esc(g.course)}</div>
           <div class="row-sub">${fmtDate(g.date)} · ${g.holes} Löcher · ${g.participants.length} Spieler</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="openScoreSheet('${g.id}')">Eingabe</button>
+        <button class="btn btn-secondary btn-sm" onclick="openParticipantsSheet('${g.id}')">👥 Spieler</button>
+        <button class="btn btn-primary btn-sm"    onclick="openScoreSheet('${g.id}')">Eingabe</button>
       </div>
     </div>`;
   }
@@ -1002,7 +1076,8 @@ function renderOneGame(g){
       </table>
     </div>
     <div class="act-row">
-      <button class="btn btn-secondary btn-sm" onclick="openScoreSheet('${g.id}')">✏️ Bearbeiten</button>
+      <button class="btn btn-secondary btn-sm" onclick="openParticipantsSheet('${g.id}')">👥 Spieler</button>
+      <button class="btn btn-secondary btn-sm" onclick="openScoreSheet('${g.id}')">✏️ Ergebnisse</button>
       <button class="btn btn-success btn-sm"   onclick="pdfGame('${g.id}')">📄 PDF</button>
     </div>
   </div>`;
