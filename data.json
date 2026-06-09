@@ -1,1 +1,1 @@
-{"players":[{"id":"mq6j71651otb7","name":"Test","email":"","phone":"","startHcp":24,"hcp":24}],"games":[{"id":"mq6j7btxd0us8","date":"2026-06-09","time":"09:00","course":"Testrunde","holes":18,"participants":[{"playerId":"mq6j71651otb7","playerName":"Test","hcpAtTime":24,"stableford":23,"ladies":1}],"done":true}]}
+{"players":[],"games":[{"id":"mq6j7btxd0us8","date":"2026-06-09","time":"09:00","course":"Testrunde","holes":18,"participants":[{"playerId":"mq6j71651otb7","playerName":"Test","hcpAtTime":24,"stableford":23,"ladies":1}],"done":true}]}
