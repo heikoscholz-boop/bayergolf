@@ -335,17 +335,17 @@ details .steps-body{padding:8px 16px 14px}
       </div>
     </div>
 
-    <!-- JSONBin Config -->
+    <!-- GitHub Config -->
     <div class="form-section">
-      <div class="form-label">JSONBin.io Zugangsdaten</div>
+      <div class="form-label">GitHub Zugangsdaten</div>
       <div class="input-group">
         <div class="input-row">
-          <label class="input-lbl" for="s-apiKey">API-Key</label>
-          <input class="input-field" type="password" id="s-apiKey" placeholder="Aus JSONBin.io kopieren" autocomplete="off">
+          <label class="input-lbl" for="s-token">Token</label>
+          <input class="input-field" type="password" id="s-token" placeholder="ghp_..." autocomplete="off">
         </div>
         <div class="input-row">
-          <label class="input-lbl" for="s-binId">Bin-ID</label>
-          <input class="input-field" type="text" id="s-binId" placeholder="Wird automatisch erstellt" autocomplete="off">
+          <label class="input-lbl" for="s-repo">Repository</label>
+          <input class="input-field" type="text" id="s-repo" placeholder="heikoscholz-boop/bayergolf" autocomplete="off">
         </div>
       </div>
     </div>
@@ -355,27 +355,31 @@ details .steps-body{padding:8px 16px 14px}
     <!-- Setup Instructions -->
     <div class="card" style="margin-bottom:16px">
       <details>
-        <summary>📖 Einrichtungsanleitung (5 Minuten)</summary>
+        <summary>📖 Einrichtungsanleitung (2 Minuten)</summary>
         <div class="steps-body">
           <div class="setup-step">
             <div class="step-num">1</div>
-            <div class="step-text">Gehe zu <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> und erstelle einen kostenlosen Account.</div>
+            <div class="step-text">Gehe auf <a href="https://github.com" target="_blank">github.com</a>, klicke oben rechts auf dein Profilbild → <strong>Settings</strong>.</div>
           </div>
           <div class="setup-step">
             <div class="step-num">2</div>
-            <div class="step-text">Klicke oben rechts auf deinen Namen → <strong>API Keys</strong>. Kopiere den <strong>Master Key</strong> und füge ihn oben in das Feld <em>API-Key</em> ein.</div>
+            <div class="step-text">Ganz unten links: <strong>Developer settings</strong> → <strong>Personal access tokens</strong> → <strong>Tokens (classic)</strong> → <strong>Generate new token (classic)</strong>.</div>
           </div>
           <div class="setup-step">
             <div class="step-num">3</div>
-            <div class="step-text">Tippe auf <strong>„Verbindung herstellen"</strong>. Die App erstellt automatisch einen neuen Datenspeicher (Bin) und trägt die ID ein.</div>
+            <div class="step-text">Gib einen Namen ein (z. B. <code>Bayergolf</code>), setze den Haken bei <strong>public_repo</strong> und klicke auf <strong>Generate token</strong>.</div>
           </div>
           <div class="setup-step">
             <div class="step-num">4</div>
-            <div class="step-text">Fertig! Alle Daten werden jetzt in der Cloud gespeichert und auf allen Geräten synchronisiert. Öffne die App auf einem anderen Gerät, gib denselben API-Key ein – und alle Daten erscheinen.</div>
+            <div class="step-text">Kopiere den angezeigten Token (beginnt mit <code>ghp_</code>), füge ihn oben ins Feld <em>Token</em> ein. Das Feld <em>Repository</em> ist bereits vorausgefüllt.</div>
+          </div>
+          <div class="setup-step">
+            <div class="step-num">5</div>
+            <div class="step-text">Tippe auf <strong>„Verbindung herstellen"</strong> — fertig! Die Daten werden direkt in deinem GitHub-Repository gespeichert.</div>
           </div>
           <div class="setup-step">
             <div class="step-num">💡</div>
-            <div class="step-text"><strong>Tipp:</strong> Der Free-Plan von JSONBin.io bietet 10.000 Anfragen/Monat – das reicht für diese App problemlos.</div>
+            <div class="step-text"><strong>Tipp für Mitspieler:</strong> Den Token einmalig per WhatsApp teilen. Jeder gibt ihn einmal in der App ein und sieht sofort alle aktuellen Daten.</div>
           </div>
         </div>
       </details>
@@ -520,12 +524,12 @@ details .steps-body{padding:8px 16px 14px}
    DATA & SETTINGS
 ════════════════════════════════════════════════════ */
 let DB       = { players:[], games:[] };
-let SETTINGS = { apiKey:'', binId:'' };
+let SETTINGS = { githubToken:'', githubRepo:'heikoscholz-boop/bayergolf', _sha:'' };
 let _activeGame = null;
 let _syncTimer  = null;
 let _syncStatus = 'off'; // off | busy | ok | err
 
-const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b/';
+const GITHUB_FILE = 'data.json';
 
 function loadLocal(){
   try{
@@ -545,8 +549,18 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function fmtDate(s){if(!s)return'';const[y,m,d]=s.split('-');return d+'.'+m+'.'+y}
 
 /* ════════════════════════════════════════════════════
-   CLOUD SYNC  (JSONBin.io)
+   CLOUD SYNC  (GitHub API)
 ════════════════════════════════════════════════════ */
+function ghApiUrl(){
+  return 'https://api.github.com/repos/'+SETTINGS.githubRepo+'/contents/'+GITHUB_FILE;
+}
+function ghHeaders(){
+  return {'Authorization':'token '+SETTINGS.githubToken,'Accept':'application/vnd.github.v3+json'};
+}
+// Safely encode unicode strings to base64
+function toBase64(str){ return btoa(unescape(encodeURIComponent(str))); }
+function fromBase64(str){ return decodeURIComponent(escape(atob(str.replace(/\n/g,'')))); }
+
 function setSyncStatus(st, label){
   _syncStatus=st;
   const dot=document.getElementById('syncDot');
@@ -557,63 +571,54 @@ function setSyncStatus(st, label){
   else if(st==='busy') lbl.textContent='Synchronisiert…';
   else if(st==='err')  lbl.textContent='Sync-Fehler';
   else                 lbl.textContent='Einstellungen';
-  // update settings view status
   const stText=document.getElementById('cloudStatusText');
   if(stText){
     if(st==='ok')   stText.textContent='Verbunden · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
     else if(st==='busy') stText.textContent='Wird synchronisiert…';
     else if(st==='err')  stText.textContent='Fehler beim Synchronisieren';
-    else if(!SETTINGS.apiKey) stText.textContent='Nicht konfiguriert';
+    else if(!SETTINGS.githubToken) stText.textContent='Nicht konfiguriert';
   }
 }
 
 async function loadFromCloud(){
-  if(!SETTINGS.apiKey||!SETTINGS.binId) return false;
-  const r=await fetch(JSONBIN_BASE+SETTINGS.binId+'/latest',{
-    headers:{'X-Access-Key':SETTINGS.apiKey}
-  });
+  if(!SETTINGS.githubToken||!SETTINGS.githubRepo) return false;
+  const r=await fetch(ghApiUrl(),{headers:ghHeaders()});
+  if(r.status===404) return false; // file doesn't exist yet
   if(!r.ok) throw new Error('HTTP '+r.status);
   const j=await r.json();
-  if(j.record&&(j.record.players||j.record.games)){
-    DB=j.record;
-    saveLocal();
-  }
+  SETTINGS._sha=j.sha;
+  saveSettings();
+  const data=JSON.parse(fromBase64(j.content));
+  if(data&&(data.players||data.games)){ DB=data; saveLocal(); }
   return true;
 }
 
 async function saveToCloud(){
-  if(!SETTINGS.apiKey||!SETTINGS.binId) return false;
-  const r=await fetch(JSONBIN_BASE+SETTINGS.binId,{
+  if(!SETTINGS.githubToken||!SETTINGS.githubRepo) return false;
+  // fetch current SHA if missing
+  if(!SETTINGS._sha){
+    const r=await fetch(ghApiUrl(),{headers:ghHeaders()});
+    if(r.ok){ const j=await r.json(); SETTINGS._sha=j.sha; saveSettings(); }
+  }
+  const body={message:'Bayergolf Daten aktualisiert',content:toBase64(JSON.stringify(DB))};
+  if(SETTINGS._sha) body.sha=SETTINGS._sha;
+  const r=await fetch(ghApiUrl(),{
     method:'PUT',
-    headers:{'Content-Type':'application/json','X-Access-Key':SETTINGS.apiKey},
-    body:JSON.stringify(DB)
-  });
-  if(!r.ok) throw new Error('HTTP '+r.status);
-  return true;
-}
-
-async function createBin(){
-  const r=await fetch(JSONBIN_BASE,{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'X-Access-Key':SETTINGS.apiKey,
-      'X-Bin-Name':'Bayergolf',
-      'X-Bin-Private':'false'
-    },
-    body:JSON.stringify(DB)
+    headers:{...ghHeaders(),'Content-Type':'application/json'},
+    body:JSON.stringify(body)
   });
   if(!r.ok) throw new Error('HTTP '+r.status);
   const j=await r.json();
-  return j.metadata.id;
+  SETTINGS._sha=j.content.sha;
+  saveSettings();
+  return true;
 }
 
 function save(){
   saveLocal();
-  // debounce cloud sync
   clearTimeout(_syncTimer);
   _syncTimer=setTimeout(async()=>{
-    if(!SETTINGS.apiKey||!SETTINGS.binId) return;
+    if(!SETTINGS.githubToken||!SETTINGS.githubRepo) return;
     setSyncStatus('busy');
     try{
       await saveToCloud();
@@ -626,13 +631,13 @@ function save(){
 }
 
 async function syncNow(){
-  if(!SETTINGS.apiKey){ toast('Bitte zuerst den API-Key eingeben.'); return; }
+  if(!SETTINGS.githubToken){ toast('Bitte zuerst den Token eingeben.'); return; }
   setSyncStatus('busy');
   try{
     await loadFromCloud();
     setSyncStatus('ok');
     renderCurrentView();
-    toast('✓ Daten von Cloud geladen');
+    toast('✓ Daten von GitHub geladen');
   }catch(e){
     setSyncStatus('err');
     toast('Fehler: '+e.message);
@@ -640,28 +645,23 @@ async function syncNow(){
 }
 
 async function saveCloudSettings(){
-  const key=document.getElementById('s-apiKey').value.trim();
-  const bid=document.getElementById('s-binId').value.trim();
-  if(!key){ toast('Bitte den API-Key eingeben.'); return; }
-  SETTINGS.apiKey=key;
-  SETTINGS.binId=bid;
+  const token=document.getElementById('s-token').value.trim();
+  const repo =document.getElementById('s-repo').value.trim()||'heikoscholz-boop/bayergolf';
+  if(!token){ toast('Bitte den GitHub Token eingeben.'); return; }
+  SETTINGS.githubToken=token;
+  SETTINGS.githubRepo=repo;
+  SETTINGS._sha='';
   saveSettings();
-
   setSyncStatus('busy','Verbinde…');
   try{
-    if(!SETTINGS.binId){
-      // auto-create bin
-      const newId=await createBin();
-      SETTINGS.binId=newId;
-      document.getElementById('s-binId').value=newId;
-      saveSettings();
-      setSyncStatus('ok');
-      toast('✓ Neue Cloud-Verbindung hergestellt · Bin-ID: '+newId);
-    } else {
-      await loadFromCloud();
-      setSyncStatus('ok');
+    const loaded=await loadFromCloud();
+    setSyncStatus('ok');
+    if(loaded){
       renderCurrentView();
-      toast('✓ Verbindung hergestellt und Daten geladen');
+      toast('✓ Verbindung hergestellt · Daten von GitHub geladen');
+    } else {
+      await saveToCloud(); // create data.json for the first time
+      toast('✓ Verbindung hergestellt · Daten in GitHub gespeichert');
     }
   }catch(e){
     setSyncStatus('err');
@@ -671,10 +671,10 @@ async function saveCloudSettings(){
 
 function clearCloudSettings(){
   if(!confirm('Cloud-Verbindung trennen? Lokale Daten bleiben erhalten.')) return;
-  SETTINGS={apiKey:'',binId:''};
+  SETTINGS={githubToken:'',githubRepo:'heikoscholz-boop/bayergolf',_sha:''};
   saveSettings();
-  document.getElementById('s-apiKey').value='';
-  document.getElementById('s-binId').value='';
+  document.getElementById('s-token').value='';
+  document.getElementById('s-repo').value='heikoscholz-boop/bayergolf';
   setSyncStatus('off');
   toast('Verbindung getrennt');
 }
@@ -1098,13 +1098,13 @@ function renderGesamt(){
    SETTINGS VIEW
 ════════════════════════════════════════════════════ */
 function renderSettingsView(){
-  document.getElementById('s-apiKey').value=SETTINGS.apiKey||'';
-  document.getElementById('s-binId').value=SETTINGS.binId||'';
+  document.getElementById('s-token').value=SETTINGS.githubToken||'';
+  document.getElementById('s-repo').value=SETTINGS.githubRepo||'heikoscholz-boop/bayergolf';
   const stText=document.getElementById('cloudStatusText');
-  if(SETTINGS.apiKey&&SETTINGS.binId){
-    stText.textContent=_syncStatus==='ok'?'Verbunden · zuletzt synchronisiert: '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'Konfiguriert';
+  if(SETTINGS.githubToken){
+    stText.textContent=_syncStatus==='ok'?'Verbunden · zuletzt synchronisiert: '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'Konfiguriert – bereit';
   } else {
-    stText.textContent='Nicht konfiguriert – bitte API-Key eingeben';
+    stText.textContent='Nicht konfiguriert – bitte GitHub Token eingeben';
   }
 }
 
@@ -1239,10 +1239,10 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   renderPlayers();
 
   // populate settings fields
-  document.getElementById('s-apiKey').value=SETTINGS.apiKey||'';
-  document.getElementById('s-binId').value=SETTINGS.binId||'';
+  document.getElementById('s-token').value=SETTINGS.githubToken||'';
+  document.getElementById('s-repo').value=SETTINGS.githubRepo||'heikoscholz-boop/bayergolf';
 
-  if(SETTINGS.apiKey && SETTINGS.binId){
+  if(SETTINGS.githubToken && SETTINGS.githubRepo){
     setSyncStatus('busy','Lädt…');
     try{
       await loadFromCloud();
