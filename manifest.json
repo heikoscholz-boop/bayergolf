@@ -1,0 +1,16 @@
+{
+  "name": "Bayergolf",
+  "short_name": "Bayergolf",
+  "description": "Golfergebnisse und Gesamtwertung",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F2F2F7",
+  "theme_color": "#007AFF",
+  "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
