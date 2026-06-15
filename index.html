@@ -32,6 +32,49 @@ body{
   min-height:100%; -webkit-font-smoothing:antialiased;
 }
 
+/* ── Splash Screen ───────────────────────────────────── */
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(160deg,#1e5c1e 0%,#2d7a2d 60%,#1a4f1a 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0;padding:40px 30px;
+  transition:opacity .7s ease, transform .7s ease;
+}
+#splash.hide{opacity:0;transform:scale(1.04);pointer-events:none}
+#splash-logo{
+  width:160px;height:160px;border-radius:32px;
+  box-shadow:0 12px 40px rgba(0,0,0,.35);
+  margin-bottom:28px;
+  animation:splashPop .6s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+@keyframes splashPop{
+  from{opacity:0;transform:scale(.7) translateY(20px)}
+  to{opacity:1;transform:scale(1) translateY(0)}
+}
+#splash-welcome{
+  color:rgba(255,255,255,.7);font-size:15px;font-weight:500;
+  letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;
+  animation:splashFade .5s .3s ease both;
+}
+#splash-title{
+  color:#fff;font-size:34px;font-weight:800;letter-spacing:-1px;
+  margin-bottom:40px;
+  animation:splashFade .5s .4s ease both;
+}
+@keyframes splashFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#splash-status{
+  display:flex;align-items:center;gap:10px;
+  color:rgba(255,255,255,.7);font-size:14px;
+  animation:splashFade .5s .6s ease both;
+}
+.splash-spinner{
+  width:18px;height:18px;border-radius:50%;
+  border:2.5px solid rgba(255,255,255,.25);
+  border-top-color:rgba(255,255,255,.9);
+  animation:spin .8s linear infinite;flex-shrink:0;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
 /* ── Header ─────────────────────────────────────────── */
 .app-header{
   background:rgba(255,255,255,.88);
@@ -265,6 +308,17 @@ details .steps-body{padding:8px 16px 14px}
 </style>
 </head>
 <body>
+
+<!-- ── Splash Screen ─────────────────────────────────────── -->
+<div id="splash">
+  <img id="splash-logo" src="apple-touch-icon.png" alt="Bayergolf Logo">
+  <div id="splash-welcome">Willkommen bei</div>
+  <div id="splash-title">Bayergolf</div>
+  <div id="splash-status">
+    <div class="splash-spinner"></div>
+    <span id="splash-text">Daten werden geladen…</span>
+  </div>
+</div>
 
 <!-- ── App Header ──────────────────────────────────────── -->
 <header class="app-header">
@@ -1435,6 +1489,21 @@ function toast(msg){
 }
 
 /* ════════════════════════════════════════════════════
+   SPLASH SCREEN
+════════════════════════════════════════════════════ */
+function hideSplash(msg){
+  const splash=document.getElementById('splash');
+  const txt=document.getElementById('splash-text');
+  if(!splash) return;
+  if(msg && txt) txt.textContent=msg;
+  // Kurze Pause, damit der Nutzer die Meldung lesen kann
+  setTimeout(()=>{
+    splash.classList.add('hide');
+    setTimeout(()=>splash.remove(), 750);
+  }, 600);
+}
+
+/* ════════════════════════════════════════════════════
    INIT
 ════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', async ()=>{
@@ -1451,12 +1520,15 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       await loadFromCloud();
       setSyncStatus('ok');
       renderPlayers(); // refresh after cloud load
+      hideSplash('Bereit!');
     }catch(e){
       setSyncStatus('err');
-      // fallback: local data already loaded
+      hideSplash('Lokale Daten geladen');
     }
   } else {
     setSyncStatus('off');
+    // Kein Cloud-Sync → Splash nach kurzer Wartezeit ausblenden
+    setTimeout(()=>hideSplash('Bereit!'), 1800);
   }
 });
 </script>
