@@ -38,9 +38,9 @@ body{
   background:linear-gradient(160deg,#1e5c1e 0%,#2d7a2d 60%,#1a4f1a 100%);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:0;padding:40px 30px;
-  transition:opacity .7s ease, transform .7s ease;
+  transition:opacity .8s ease, transform .8s ease;
 }
-#splash.hide{opacity:0;transform:scale(1.04);pointer-events:none}
+#splash.hide{opacity:0;transform:scale(1.05);pointer-events:none}
 #splash-logo{
   width:160px;height:160px;border-radius:32px;
   box-shadow:0 12px 40px rgba(0,0,0,.35);
@@ -58,20 +58,77 @@ body{
 }
 #splash-title{
   color:#fff;font-size:34px;font-weight:800;letter-spacing:-1px;
-  margin-bottom:40px;
+  margin-bottom:24px;
   animation:splashFade .5s .4s ease both;
 }
 @keyframes splashFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Golf-Animation ──────────────────────────────────── */
+.golf-scene{
+  position:relative;width:260px;height:68px;
+  margin-bottom:20px;
+  animation:splashFade .5s .5s ease both;
+}
+/* Boden */
+.golf-scene::before{
+  content:'';position:absolute;
+  bottom:18px;left:0;right:0;
+  height:2px;background:rgba(255,255,255,.25);border-radius:2px;
+}
+/* Loch */
+.golf-hole{
+  position:absolute;right:20px;bottom:12px;
+  width:26px;height:9px;
+  background:rgba(0,0,0,.75);border-radius:50%;
+}
+/* Fahnenstange */
+.golf-pole{
+  position:absolute;right:31px;bottom:20px;
+  width:2px;height:32px;
+  background:rgba(255,255,255,.9);border-radius:1px;
+}
+/* Fahne */
+.golf-flag{
+  position:absolute;right:33px;bottom:44px;
+  width:0;height:0;
+  border-left:14px solid rgba(255,80,80,.95);
+  border-top:5px solid transparent;
+  border-bottom:5px solid transparent;
+}
+/* Golfball */
+.golf-ball{
+  position:absolute;
+  bottom:18px;   /* liegt auf dem Boden */
+  left:-22px;    /* startet links außerhalb */
+  width:20px;height:20px;border-radius:50%;
+  background:radial-gradient(circle at 38% 35%, #fff 30%, #ddd 70%, #bbb 100%);
+  box-shadow:0 3px 7px rgba(0,0,0,.45), inset 0 -2px 4px rgba(0,0,0,.15);
+  animation:golfRoll 3.2s cubic-bezier(.4,0,.6,1) 1s infinite;
+}
+/* Dimple-Muster per ::before */
+.golf-ball::before{
+  content:'';position:absolute;inset:3px;border-radius:50%;
+  background:radial-gradient(circle at 60% 60%, rgba(0,0,0,.12) 25%, transparent 55%),
+             radial-gradient(circle at 30% 70%, rgba(0,0,0,.08) 20%, transparent 45%);
+}
+
+@keyframes golfRoll {
+  /* Phase 1: Ball rollt von links nach rechts */
+  0%   { transform:translateX(0)    rotate(0deg)    scale(1);   opacity:1; bottom:18px }
+  55%  { transform:translateX(195px) rotate(720deg)  scale(1);   opacity:1; bottom:18px }
+  /* Phase 2: Ball erreicht Loch und fällt rein */
+  66%  { transform:translateX(210px) rotate(760deg)  scale(.75); opacity:1; bottom:13px }
+  74%  { transform:translateX(218px) rotate(780deg)  scale(.45); opacity:.7; bottom:6px }
+  80%  { transform:translateX(222px) rotate(790deg)  scale(.15); opacity:0;  bottom:0px }
+  /* Phase 3: kurze Pause – unsichtbar */
+  80%  { opacity:0 }
+  100% { transform:translateX(222px) rotate(790deg)  scale(0);   opacity:0;  bottom:0px }
+}
+
 #splash-status{
   display:flex;align-items:center;gap:10px;
-  color:rgba(255,255,255,.7);font-size:14px;
-  animation:splashFade .5s .6s ease both;
-}
-.splash-spinner{
-  width:18px;height:18px;border-radius:50%;
-  border:2.5px solid rgba(255,255,255,.25);
-  border-top-color:rgba(255,255,255,.9);
-  animation:spin .8s linear infinite;flex-shrink:0;
+  color:rgba(255,255,255,.75);font-size:14px;
+  animation:splashFade .5s .7s ease both;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -314,8 +371,16 @@ details .steps-body{padding:8px 16px 14px}
   <img id="splash-logo" src="apple-touch-icon.png" alt="Bayergolf Logo">
   <div id="splash-welcome">Willkommen bei</div>
   <div id="splash-title">Bayergolf</div>
+
+  <!-- Golfball rollt ins Loch -->
+  <div class="golf-scene">
+    <div class="golf-pole"></div>
+    <div class="golf-flag"></div>
+    <div class="golf-hole"></div>
+    <div class="golf-ball"></div>
+  </div>
+
   <div id="splash-status">
-    <div class="splash-spinner"></div>
     <span id="splash-text">Daten werden geladen…</span>
   </div>
 </div>
@@ -1491,16 +1556,21 @@ function toast(msg){
 /* ════════════════════════════════════════════════════
    SPLASH SCREEN
 ════════════════════════════════════════════════════ */
+const _splashStart = Date.now();
+const _splashMin   = 4000; // mindestens 4 Sekunden sichtbar
+
 function hideSplash(msg){
   const splash=document.getElementById('splash');
   const txt=document.getElementById('splash-text');
   if(!splash) return;
   if(msg && txt) txt.textContent=msg;
-  // Kurze Pause, damit der Nutzer die Meldung lesen kann
+  // Mindestanzeigezeit einhalten, dann sanft ausblenden
+  const elapsed=Date.now()-_splashStart;
+  const wait=Math.max(0, _splashMin-elapsed);
   setTimeout(()=>{
     splash.classList.add('hide');
-    setTimeout(()=>splash.remove(), 750);
-  }, 600);
+    setTimeout(()=>splash.remove(), 850);
+  }, wait + 600); // +600ms damit der Nutzer "Bereit!" lesen kann
 }
 
 /* ════════════════════════════════════════════════════
@@ -1527,8 +1597,8 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     }
   } else {
     setSyncStatus('off');
-    // Kein Cloud-Sync → Splash nach kurzer Wartezeit ausblenden
-    setTimeout(()=>hideSplash('Bereit!'), 1800);
+    // Kein Cloud-Sync → Splash läuft bis Mindestzeit ab
+    hideSplash('Bereit! ⛳');
   }
 });
 </script>
