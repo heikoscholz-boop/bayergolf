@@ -32,6 +32,145 @@ body{
   min-height:100%; -webkit-font-smoothing:antialiased;
 }
 
+/* ── Login Screen ────────────────────────────────────── */
+#login{
+  position:fixed;inset:0;z-index:9998;overflow-y:auto;
+  background:linear-gradient(160deg,#1e5c1e 0%,#2d7a2d 60%,#1a4f1a 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:40px 28px env(safe-area-inset-bottom); gap:0;
+  opacity:0;pointer-events:none;
+  transition:opacity .5s ease;
+}
+#login.show{opacity:1;pointer-events:all}
+
+/* Namensauswahl */
+#name-screen{display:none;flex-direction:column;align-items:center;width:100%;max-width:340px}
+#name-screen.active{display:flex}
+.name-screen-title{color:#fff;font-size:22px;font-weight:800;margin-bottom:4px;text-align:center}
+.name-screen-sub{color:rgba(255,255,255,.65);font-size:14px;margin-bottom:20px;text-align:center}
+.name-list{width:100%;background:rgba(255,255,255,.12);border-radius:16px;overflow:hidden;max-height:55vh;overflow-y:auto}
+.name-item{
+  display:flex;align-items:center;gap:12px;padding:13px 16px;
+  border-bottom:.5px solid rgba(255,255,255,.1);cursor:pointer;
+  transition:background .15s;
+}
+.name-item:last-child{border-bottom:none}
+.name-item:active{background:rgba(255,255,255,.15)}
+.name-avatar{
+  width:36px;height:36px;border-radius:50%;
+  background:rgba(255,255,255,.25);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;flex-shrink:0;
+}
+.name-item-text{flex:1;color:#fff;font-size:16px;font-weight:500}
+.name-chevron{color:rgba(255,255,255,.4);font-size:18px}
+.btn-skip{
+  margin-top:14px;background:transparent;border:1.5px solid rgba(255,255,255,.3);
+  color:rgba(255,255,255,.7);padding:12px 28px;border-radius:12px;
+  font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;width:100%;
+  transition:background .2s;
+}
+.btn-skip:active{background:rgba(255,255,255,.1)}
+
+/* Statistik-Screen */
+#stats-screen{display:none;flex-direction:column;align-items:center;width:100%;max-width:340px}
+#stats-screen.active{display:flex}
+.stats-player-name{
+  color:#fff;font-size:26px;font-weight:800;letter-spacing:-.5px;
+  text-align:center;margin-bottom:6px;
+}
+.stats-player-hcp{color:rgba(255,255,255,.6);font-size:13px;margin-bottom:20px}
+.stats-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-bottom:14px}
+.stats-tile{
+  background:rgba(255,255,255,.15);border-radius:14px;
+  padding:14px 10px;text-align:center;
+}
+.stats-tile-val{color:#fff;font-size:28px;font-weight:800;letter-spacing:-1px;line-height:1}
+.stats-tile-lbl{color:rgba(255,255,255,.65);font-size:11px;font-weight:600;margin-top:4px;text-transform:uppercase;letter-spacing:.3px}
+.stats-placements{
+  width:100%;background:rgba(255,255,255,.12);border-radius:14px;
+  padding:14px 16px;margin-bottom:16px;
+}
+.stats-plac-lbl{color:rgba(255,255,255,.6);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px}
+.stats-ranks{display:flex;flex-wrap:wrap;gap:6px}
+.rank-chip{
+  background:rgba(255,255,255,.2);color:#fff;
+  padding:4px 10px;border-radius:20px;font-size:13px;font-weight:700;
+}
+.rank-chip.rank-1{background:rgba(255,215,0,.35);color:#ffe066}
+.rank-chip.rank-2{background:rgba(200,200,200,.3);color:#e0e0e0}
+.rank-chip.rank-chip-3{background:rgba(205,127,50,.3);color:#f0b060}
+.stats-quote{
+  background:rgba(255,255,255,.12);border-radius:14px;
+  padding:14px 16px;color:rgba(255,255,255,.9);
+  font-size:15px;font-weight:500;line-height:1.5;
+  text-align:center;margin-bottom:20px;width:100%;
+  font-style:italic;
+}
+.btn-weiter{
+  background:#fff;color:#1e5c1e;
+  width:100%;padding:15px;border-radius:14px;border:none;
+  font-size:17px;font-weight:700;cursor:pointer;font-family:inherit;
+  transition:transform .15s,opacity .15s;
+}
+.btn-weiter:active{transform:scale(.97);opacity:.85}
+.login-logo{
+  width:80px;height:80px;border-radius:18px;
+  box-shadow:0 8px 24px rgba(0,0,0,.3);
+  margin-bottom:20px;
+}
+.login-title{
+  color:#fff;font-size:22px;font-weight:800;letter-spacing:-.5px;
+  margin-bottom:6px;text-align:center;
+}
+.login-sub{
+  color:rgba(255,255,255,.65);font-size:14px;
+  margin-bottom:32px;text-align:center;
+}
+.role-btn{
+  width:100%;max-width:320px;padding:16px 20px;border:none;border-radius:16px;
+  font-size:17px;font-weight:700;font-family:inherit;cursor:pointer;
+  display:flex;align-items:center;gap:14px;margin-bottom:12px;
+  transition:transform .15s,opacity .15s;
+}
+.role-btn:active{transform:scale(.97);opacity:.85}
+.role-btn-spieler{background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.3)}
+.role-btn-admin{background:#fff;color:#1e5c1e;}
+.role-btn-icon{font-size:24px;flex-shrink:0}
+.role-btn-text{text-align:left}
+.role-btn-text span{display:block;font-size:12px;font-weight:400;opacity:.7;margin-top:1px}
+
+/* Passwort-Screen */
+#pw-screen{display:none;flex-direction:column;align-items:center;width:100%;max-width:320px}
+#pw-screen.active{display:flex}
+#login-role{display:flex;flex-direction:column;align-items:center;width:100%;max-width:320px}
+.pw-label{color:rgba(255,255,255,.8);font-size:14px;margin-bottom:16px;text-align:center}
+.pw-input{
+  width:100%;padding:16px;border-radius:14px;border:2px solid rgba(255,255,255,.3);
+  background:rgba(255,255,255,.15);color:#fff;font-size:28px;font-weight:700;
+  text-align:center;letter-spacing:8px;font-family:inherit;outline:none;
+  margin-bottom:14px;
+}
+.pw-input::placeholder{color:rgba(255,255,255,.3);letter-spacing:2px;font-size:16px;font-weight:400}
+.pw-input:focus{border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.22)}
+.pw-error{
+  background:rgba(220,38,38,.85);color:#fff;
+  font-size:14px;font-weight:600;
+  padding:10px 16px;border-radius:10px;
+  margin-bottom:12px;text-align:center;
+  min-height:0;width:100%;
+  display:none;
+}
+.pw-error.visible{display:block}
+.pw-actions{display:flex;gap:10px;width:100%}
+.pw-actions .btn{flex:1}
+.btn-white{background:#fff;color:#1e5c1e;}
+.btn-ghost{background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.3)}
+
+/* Spieler-Modus: Admin-Elemente ausblenden */
+body.spieler-mode .admin-only{display:none!important}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+
 /* ── Splash Screen ───────────────────────────────────── */
 #splash{
   position:fixed;inset:0;z-index:9999;
@@ -385,6 +524,56 @@ details .steps-body{padding:8px 16px 14px}
   </div>
 </div>
 
+<!-- ── Login Screen ──────────────────────────────────────── -->
+<div id="login">
+  <img class="login-logo" src="apple-touch-icon.png" alt="Logo">
+  <div class="login-title">Bayergolf</div>
+  <div class="login-sub">Wie möchtest du die App nutzen?</div>
+
+  <!-- Rollenauswahl -->
+  <div id="login-role">
+    <button class="role-btn role-btn-spieler" onclick="selectRole('spieler')">
+      <span class="role-btn-icon">👁️</span>
+      <div class="role-btn-text">Nur ansehen<span>Ergebnisse & Rangliste</span></div>
+    </button>
+    <button class="role-btn role-btn-admin" onclick="selectRole('admin')">
+      <span class="role-btn-icon">⚙️</span>
+      <div class="role-btn-text">Admin<span>Eingaben & Verwaltung</span></div>
+    </button>
+  </div>
+
+  <!-- Namensauswahl (nach "Nur ansehen") -->
+  <div id="name-screen">
+    <div class="name-screen-title">Wer bist du?</div>
+    <div class="name-screen-sub">Wähle deinen Namen für deine persönliche Statistik</div>
+    <div class="name-list" id="name-list"></div>
+    <button class="btn-skip" onclick="skipNameSelect()">Überspringen →</button>
+  </div>
+
+  <!-- Persönliche Statistik -->
+  <div id="stats-screen">
+    <div class="stats-player-name" id="stats-name"></div>
+    <div class="stats-player-hcp" id="stats-hcp"></div>
+    <div class="stats-tiles" id="stats-tiles"></div>
+    <div class="stats-placements" id="stats-placements"></div>
+    <div class="stats-quote" id="stats-quote"></div>
+    <button class="btn-weiter" onclick="hideLogin()">Weiter ›</button>
+  </div>
+
+  <!-- Passwort-Eingabe -->
+  <div id="pw-screen">
+    <div class="pw-label">🔑 Admin-Kennwort eingeben</div>
+    <input class="pw-input" type="password" id="pw-input"
+           inputmode="numeric" maxlength="10" placeholder="Kennwort"
+           onkeydown="if(event.key==='Enter') checkPassword()">
+    <div class="pw-error" id="pw-error"></div>
+    <div class="pw-actions">
+      <button class="btn btn-ghost" onclick="backToRoleSelect()">← Zurück</button>
+      <button class="btn btn-white" onclick="checkPassword()">Anmelden</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── App Header ──────────────────────────────────────── -->
 <header class="app-header">
   <div class="header-inner">
@@ -403,7 +592,7 @@ details .steps-body{padding:8px 16px 14px}
   <div class="main">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
       <h1 class="page-title" style="margin-bottom:0">Spieler</h1>
-      <button class="add-btn" onclick="openPlayerSheet()">+</button>
+      <button class="add-btn admin-only" onclick="openPlayerSheet()">+</button>
     </div>
     <div id="playerList"></div>
   </div>
@@ -416,7 +605,7 @@ details .steps-body{padding:8px 16px 14px}
   <div class="main">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
       <h1 class="page-title" style="margin-bottom:0">Spiele</h1>
-      <button class="add-btn" onclick="openGameSheet()">+</button>
+      <button class="add-btn admin-only" onclick="openGameSheet()">+</button>
     </div>
     <div id="gameList"></div>
   </div>
@@ -795,6 +984,162 @@ function clearCloudSettings(){
 }
 
 /* ════════════════════════════════════════════════════
+   LOGIN & ROLLEN
+════════════════════════════════════════════════════ */
+let _userRole = null; // 'spieler' | 'admin'
+const ADMIN_PW = '1904';
+
+function isAdmin(){ return _userRole === 'admin'; }
+
+function showLogin(){
+  document.getElementById('login').classList.add('show');
+}
+
+function selectRole(role){
+  if(role === 'spieler'){
+    _userRole = 'spieler';
+    document.body.classList.add('spieler-mode');
+    // → Namensauswahl zeigen
+    document.getElementById('login-role').style.display='none';
+    showNameSelect();
+  } else {
+    // Admin → Passwort-Screen zeigen
+    document.getElementById('login-role').style.display='none';
+    document.getElementById('pw-screen').classList.add('active');
+    document.getElementById('pw-input').value='';
+    document.getElementById('pw-error').textContent='';
+    setTimeout(()=>document.getElementById('pw-input').focus(), 100);
+  }
+}
+
+function checkPassword(){
+  const entered = document.getElementById('pw-input').value.trim();
+  if(entered === ADMIN_PW){
+    _userRole = 'admin';
+    document.body.classList.remove('spieler-mode');
+    hideLogin();
+  } else {
+    const err = document.getElementById('pw-error');
+    err.textContent = '❌ Falsches Kennwort — bitte erneut versuchen.';
+    err.classList.add('visible');
+    document.getElementById('pw-input').value='';
+    document.getElementById('pw-input').focus();
+    // Kurzes Schütteln
+    const inp = document.getElementById('pw-input');
+    inp.style.animation='shake .4s ease';
+    setTimeout(()=>inp.style.animation='',450);
+  }
+}
+
+/* ── Namensauswahl & Statistik ── */
+let _currentPlayer = null;
+
+function showNameSelect(){
+  const ns = document.getElementById('name-screen');
+  ns.classList.add('active');
+  const sorted=[...DB.players].sort((a,b)=>
+    (a.lastName||'').localeCompare(b.lastName||'','de')||(a.name||'').localeCompare(b.name||'','de')
+  );
+  document.getElementById('name-list').innerHTML = sorted.length
+    ? sorted.map(p=>`
+        <div class="name-item" onclick="selectPlayerName('${p.id}')">
+          <div class="name-avatar">${(p.name[0]||'')+(p.lastName?p.lastName[0]:'')}</div>
+          <span class="name-item-text">${esc(p.name+(p.lastName?' '+p.lastName:''))}</span>
+          <span class="name-chevron">›</span>
+        </div>`).join('')
+    : `<div style="padding:20px;color:rgba(255,255,255,.6);text-align:center;font-size:14px">Noch keine Spieler angelegt</div>`;
+}
+
+function selectPlayerName(pid){
+  _currentPlayer = DB.players.find(x=>x.id===pid);
+  if(!_currentPlayer){ hideLogin(); return; }
+  document.getElementById('name-screen').classList.remove('active');
+  showPlayerStats(_currentPlayer);
+}
+
+function skipNameSelect(){
+  document.getElementById('name-screen').classList.remove('active');
+  hideLogin();
+}
+
+function showPlayerStats(player){
+  document.getElementById('stats-screen').classList.add('active');
+  document.getElementById('stats-name').textContent = player.name+(player.lastName?' '+player.lastName:'');
+  document.getElementById('stats-hcp').textContent = 'Aktuelles HCP: '+player.hcp;
+
+  // Statistiken aus calcGesamt
+  const {all, ranked} = calcGesamt();
+  const st = all.find(p=>p.id===player.id);
+
+  if(!st || st.games===0){
+    // Noch keine Spiele
+    document.getElementById('stats-tiles').innerHTML=`
+      <div class="stats-tile"><div class="stats-tile-val">0</div><div class="stats-tile-lbl">Runden</div></div>
+      <div class="stats-tile"><div class="stats-tile-val">–</div><div class="stats-tile-lbl">Gesamtrang</div></div>
+      <div class="stats-tile"><div class="stats-tile-val">–</div><div class="stats-tile-lbl">Rang-Punkte</div></div>
+      <div class="stats-tile"><div class="stats-tile-val">0</div><div class="stats-tile-lbl">Ladies</div></div>`;
+    document.getElementById('stats-placements').innerHTML=`<div class="stats-plac-lbl">Platzierungen</div><div style="color:rgba(255,255,255,.5);font-size:13px">Noch keine Teilnahmen</div>`;
+    document.getElementById('stats-quote').textContent='👋 Willkommen! Dein erstes Spiel wartet schon auf dich. Zeig was du draufhast!';
+    return;
+  }
+
+  // Gesamtrang bestimmen
+  const rankPos = ranked.findIndex(p=>p.id===player.id);
+  const totalRank = rankPos>=0 ? tiedRankGesamt(ranked, rankPos) : null;
+  const totalPlayers = ranked.length;
+
+  document.getElementById('stats-tiles').innerHTML=`
+    <div class="stats-tile"><div class="stats-tile-val">${st.games}</div><div class="stats-tile-lbl">Runden</div></div>
+    <div class="stats-tile"><div class="stats-tile-val">${totalRank ? totalRank+'.' : '–'}</div><div class="stats-tile-lbl">Gesamtrang</div></div>
+    <div class="stats-tile"><div class="stats-tile-val">${st.effectiveSum}</div><div class="stats-tile-lbl">Rang-Punkte</div></div>
+    <div class="stats-tile"><div class="stats-tile-val">${st.ladies}</div><div class="stats-tile-lbl">Ladies</div></div>`;
+
+  const rankChips = st.ranks.map((r,i)=>{
+    const cls = r===1?'rank-chip rank-1':r===2?'rank-chip rank-2':r===3?'rank-chip rank-chip-3':'rank-chip';
+    return `<span class="${cls}">${r}.</span>`;
+  }).join('');
+  document.getElementById('stats-placements').innerHTML=`<div class="stats-plac-lbl">Platzierungen je Runde</div><div class="stats-ranks">${rankChips}</div>`;
+
+  // Motivationsspruch
+  const quotes = {
+    1:   ['🏆 Unschlagbar! Du führst die Rangliste an — Respekt!',
+          '⛳ Rang 1 — du machst das Golf-Loch zum Heimweg!'],
+    top3:['🥊 Du bist im Spitzenfeld! Rang 1 ist zum Greifen nah!',
+          '💪 Top 3 — stark gespielt! Bleib dran!'],
+    half:['🎯 Du kämpfst dich nach vorne! Eine gute Runde kann alles ändern.',
+          '⛳ Solide dabei! Mit Konstanz geht es noch weiter hoch!'],
+    low: ['🌱 Jede Runde macht dich besser. Gib nicht auf!',
+          '💡 Golf ist ein Langstreckenlauf — dein bester Tag kommt noch!'],
+    none:['🌟 Du bist noch nicht gewertet, aber dabei ist alles! Noch eine Runde!',
+          '⏳ Noch zwei Runden bis zur Gesamtwertung — weiter so!']
+  };
+  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+  let quote;
+  if(!totalRank)               quote = pick(quotes.none);
+  else if(totalRank===1)       quote = pick(quotes[1]);
+  else if(totalRank<=3)        quote = pick(quotes.top3);
+  else if(totalRank<=Math.ceil(totalPlayers/2)) quote = pick(quotes.half);
+  else                         quote = pick(quotes.low);
+  document.getElementById('stats-quote').textContent = quote;
+}
+
+function backToRoleSelect(){
+  document.getElementById('pw-screen').classList.remove('active');
+  document.getElementById('login-role').style.display='flex';
+  const e=document.getElementById('pw-error');
+  e.textContent=''; e.classList.remove('visible');
+  document.getElementById('pw-input').value='';
+}
+
+function hideLogin(){
+  const l=document.getElementById('login');
+  l.style.transition='opacity .5s ease, transform .5s ease';
+  l.style.transform='scale(1.04)';
+  l.style.opacity='0';
+  setTimeout(()=>{ l.style.display='none'; renderCurrentView(); },520);
+}
+
+/* ════════════════════════════════════════════════════
    NAVIGATION
 ════════════════════════════════════════════════════ */
 function showView(name){
@@ -881,8 +1226,8 @@ function renderPlayers(){
         <div class="row-sub">${p.email?esc(p.email)+' · ':''}HCP&nbsp;${p.hcp}</div>
       </div>
       <span class="chip chip-blue">HCP&nbsp;${p.hcp}</span>
-      <button class="icon-btn icon-btn-blue" onclick="openPlayerSheet('${p.id}')">✏️</button>
-      <button class="icon-btn icon-btn-red"  onclick="deletePlayer('${p.id}')">✕</button>
+      <button class="icon-btn icon-btn-blue admin-only" onclick="openPlayerSheet('${p.id}')">✏️</button>
+      <button class="icon-btn icon-btn-red  admin-only" onclick="deletePlayer('${p.id}')">✕</button>
     </div>`).join('')+`</div>`;
 }
 
@@ -946,7 +1291,7 @@ function renderGames(){
         <div class="row-sub">${fmtDate(g.date)} · ${g.time} · ${g.holes}&nbsp;Löcher · ${g.participants.length}&nbsp;Spieler</div>
       </div>
       <span class="dot ${g.done?'dot-green':'dot-orange'}"></span>
-      <button class="icon-btn icon-btn-red" onclick="event.stopPropagation();deleteGame('${g.id}')">✕</button>
+      <button class="icon-btn icon-btn-red admin-only" onclick="event.stopPropagation();deleteGame('${g.id}')">✕</button>
     </div>`).join('')+`</div>`;
 }
 
@@ -1130,8 +1475,8 @@ function renderOneGame(g){
           <div class="row-title">${esc(g.course)}</div>
           <div class="row-sub">${fmtDate(g.date)} · ${g.holes} Löcher · ${g.participants.length} Spieler</div>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="openParticipantsSheet('${g.id}')">👥 Spieler</button>
-        <button class="btn btn-primary btn-sm"    onclick="openScoreSheet('${g.id}')">Eingabe</button>
+        <button class="btn btn-secondary btn-sm admin-only" onclick="openParticipantsSheet('${g.id}')">👥 Spieler</button>
+        <button class="btn btn-primary btn-sm admin-only"    onclick="openScoreSheet('${g.id}')">Eingabe</button>
       </div>
     </div>`;
   }
@@ -1167,9 +1512,9 @@ function renderOneGame(g){
       </table>
     </div>
     <div class="act-row">
-      <button class="btn btn-secondary btn-sm" onclick="openParticipantsSheet('${g.id}')">👥 Spieler</button>
-      <button class="btn btn-secondary btn-sm" onclick="openScoreSheet('${g.id}')">✏️ Ergebnisse</button>
-      <button class="btn btn-success btn-sm"   onclick="pdfGame('${g.id}')">📄 PDF</button>
+      <button class="btn btn-secondary btn-sm admin-only" onclick="openParticipantsSheet('${g.id}')">👥 Spieler</button>
+      <button class="btn btn-secondary btn-sm admin-only" onclick="openScoreSheet('${g.id}')">✏️ Ergebnisse</button>
+      <button class="btn btn-success btn-sm"              onclick="pdfGame('${g.id}')">📄 PDF</button>
     </div>
   </div>`;
 }
@@ -1534,7 +1879,10 @@ function hideSplash(msg){
   const wait=Math.max(0, _splashMin-elapsed);
   setTimeout(()=>{
     splash.classList.add('hide');
-    setTimeout(()=>splash.remove(), 850);
+    setTimeout(()=>{
+      splash.remove();
+      showLogin(); // Nach Splash → Login zeigen
+    }, 850);
   }, wait + 600); // +600ms damit der Nutzer "Bereit!" lesen kann
 }
 
