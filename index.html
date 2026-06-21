@@ -134,8 +134,9 @@ body{
   transition:transform .15s,opacity .15s;
 }
 .role-btn:active{transform:scale(.97);opacity:.85}
-.role-btn-spieler{background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.3)}
-.role-btn-admin{background:#fff;color:#1e5c1e;}
+/* Spieler = primary (weiß/prominent), Admin = sekundär */
+.role-btn-spieler{background:#fff;color:#1e5c1e;}
+.role-btn-admin{background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.3)}
 .role-btn-icon{font-size:24px;flex-shrink:0}
 .role-btn-text{text-align:left}
 .role-btn-text span{display:block;font-size:12px;font-weight:400;opacity:.7;margin-top:1px}
@@ -175,8 +176,13 @@ body{
 tr.my-row td { background:rgba(255,196,0,.13)!important }
 tr.my-row td:first-child { box-shadow:inset 3px 0 0 var(--orange) }
 
-/* Spieler-Modus: Admin-Elemente ausblenden */
+/* Spieler-Modus: Admin-Elemente + Einstellungen-Tab ausblenden */
 body.spieler-mode .admin-only{display:none!important}
+body.spieler-mode #nt-settings{display:none!important}
+/* Wenn 4 statt 5 Tabs → gleichmäßige Breite */
+body.spieler-mode .nav-inner .nav-tab{flex:1}
+/* Sync-Badge im Spieler-Modus: nicht klickbar, kein Cursor */
+body.spieler-mode .sync-badge{pointer-events:none;cursor:default}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
 
 /* ── Splash Screen ───────────────────────────────────── */
@@ -586,9 +592,9 @@ details .steps-body{padding:8px 16px 14px}
 <header class="app-header">
   <div class="header-inner">
     <div class="header-logo">⛳ Bayergolf</div>
-    <button class="sync-badge" onclick="showView('settings')" id="syncBadge">
+    <button class="sync-badge" onclick="if(isAdmin())showView('settings')" id="syncBadge">
       <span class="sync-dot off" id="syncDot"></span>
-      <span id="syncLabel">Einstellungen</span>
+      <span id="syncLabel">Lädt…</span>
     </button>
   </div>
 </header>
@@ -660,11 +666,24 @@ details .steps-body{padding:8px 16px 14px}
 
     <!-- Info: automatisch verbunden -->
     <div class="alert alert-ok" style="margin-bottom:16px">
-      ✅ Die App ist automatisch mit der Bayergolf-Cloud verbunden. Keine weitere Einrichtung nötig.
+      ✅ Die App ist automatisch mit der Bayergolf-Cloud verbunden.
+    </div>
+
+    <!-- Token-Erneuerung (nur bei 401-Fehler sichtbar) -->
+    <div id="token-renewal" style="display:none;margin-bottom:16px">
+      <div class="alert alert-warn" style="margin-bottom:10px">
+        ⚠️ <strong>Token abgelaufen (401)</strong> — Bitte neuen GitHub Token eingeben.
+      </div>
+      <div class="input-group">
+        <div class="input-row">
+          <label class="input-lbl" for="s-token">Neuer Token</label>
+          <input class="input-field" type="password" id="s-token" placeholder="ghp_..." autocomplete="off">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-w" onclick="renewToken()" style="margin-top:10px">Token speichern & verbinden</button>
     </div>
 
     <!-- Versteckte Felder für interne Nutzung (JS benötigt sie) -->
-    <input type="hidden" id="s-token">
     <input type="hidden" id="s-repo">
 
     <!-- Danger Zone -->
@@ -827,7 +846,7 @@ details .steps-body{padding:8px 16px 14px}
 ════════════════════════════════════════════════════ */
 let DB       = { players:[], games:[] };
 // Standard-Zugangsdaten — für alle Nutzer vorausgefüllt
-const _DEFAULT_TOKEN = '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';
+const _DEFAULT_TOKEN = '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';
 const _DEFAULT_REPO  = 'heikoscholz-boop/bayergolf';
 let SETTINGS = { githubToken:_DEFAULT_TOKEN, githubRepo:_DEFAULT_REPO, _sha:'' };
 let _activeGame = null;
@@ -882,20 +901,24 @@ function setSyncStatus(st, label){
   else if(st==='ok')   lbl.textContent='Synchronisiert';
   else if(st==='busy') lbl.textContent='Synchronisiert…';
   else if(st==='err')  lbl.textContent='Sync-Fehler';
-  else                 lbl.textContent='Einstellungen';
+  else                 lbl.textContent=isAdmin()?'Einstellungen':'☁️ Cloud';
   const stText=document.getElementById('cloudStatusText');
   if(stText){
     if(st==='ok')   stText.textContent='Verbunden · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
     else if(st==='busy') stText.textContent='Wird synchronisiert…';
-    else if(st==='err')  stText.textContent='Fehler beim Synchronisieren';
+    else if(st==='err')  stText.textContent='⚠️ Sync-Fehler (401) — Token erneuern';
     else if(!SETTINGS.githubToken) stText.textContent='Nicht konfiguriert';
   }
+  // Token-Erneuerungs-Hinweis für Admins einblenden
+  const t401=document.getElementById('token-renewal');
+  if(t401) t401.style.display=(st==='err'&&isAdmin())?'block':'none';
 }
 
 async function loadFromCloud(){
   if(!SETTINGS.githubToken||!SETTINGS.githubRepo) return false;
   const r=await fetch(ghApiUrl(),{headers:ghHeaders()});
-  if(r.status===404) return false; // file doesn't exist yet
+  if(r.status===404) return false;
+  if(r.status===401) throw new Error('HTTP 401 – Token abgelaufen');
   if(!r.ok) throw new Error('HTTP '+r.status);
   const j=await r.json();
   SETTINGS._sha=j.sha;
@@ -978,6 +1001,22 @@ async function saveCloudSettings(){
   }catch(e){
     setSyncStatus('err');
     toast('Verbindung fehlgeschlagen: '+e.message);
+  }
+}
+
+async function renewToken(){
+  const t=document.getElementById('s-token').value.trim();
+  if(!t){toast('Bitte neuen Token eingeben.');return;}
+  SETTINGS.githubToken=t; SETTINGS._sha=''; saveSettings();
+  setSyncStatus('busy','Verbinde…');
+  try{
+    await loadFromCloud();
+    setSyncStatus('ok'); renderCurrentView();
+    toast('✓ Token erneuert — Verbindung hergestellt');
+    document.getElementById('s-token').value='';
+  }catch(e){
+    setSyncStatus('err');
+    toast('Fehler: '+e.message);
   }
 }
 
