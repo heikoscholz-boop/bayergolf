@@ -846,7 +846,7 @@ details .steps-body{padding:8px 16px 14px}
 ════════════════════════════════════════════════════ */
 let DB       = { players:[], games:[] };
 // Standard-Zugangsdaten — für alle Nutzer vorausgefüllt
-const _DEFAULT_TOKEN = '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';
+const _DEFAULT_TOKEN = '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';
 const _DEFAULT_REPO  = 'heikoscholz-boop/bayergolf';
 let SETTINGS = { githubToken:_DEFAULT_TOKEN, githubRepo:_DEFAULT_REPO, _sha:'' };
 let _activeGame = null;
@@ -861,11 +861,12 @@ function loadLocal(){
     const s=localStorage.getItem('bg_cfg');
     if(s){
       const saved=JSON.parse(s);
-      // Token/Repo aus Defaults übernehmen falls leer (Erstnutzung)
       SETTINGS={...SETTINGS,...saved};
-      if(!SETTINGS.githubToken) SETTINGS.githubToken=_DEFAULT_TOKEN;
-      if(!SETTINGS.githubRepo)  SETTINGS.githubRepo=_DEFAULT_REPO;
     }
+    // Token immer aus dem eingebautem Default übernehmen (ignoriert Cache)
+    SETTINGS.githubToken=_DEFAULT_TOKEN;
+    SETTINGS.githubRepo=_DEFAULT_REPO;
+    SETTINGS._sha='';
   }catch(e){}
 }
 function saveLocal(){
