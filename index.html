@@ -167,6 +167,14 @@ body{
 .btn-white{background:#fff;color:#1e5c1e;}
 .btn-ghost{background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.3)}
 
+/* Stats-Screen: Untertitel ausblenden */
+#login.stats-active .login-sub,
+#login.stats-active .login-title { display:none }
+
+/* Eigene Zeile hervorheben */
+tr.my-row td { background:rgba(255,196,0,.13)!important }
+tr.my-row td:first-child { box-shadow:inset 3px 0 0 var(--orange) }
+
 /* Spieler-Modus: Admin-Elemente ausblenden */
 body.spieler-mode .admin-only{display:none!important}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
@@ -533,8 +541,8 @@ details .steps-body{padding:8px 16px 14px}
   <!-- Rollenauswahl -->
   <div id="login-role">
     <button class="role-btn role-btn-spieler" onclick="selectRole('spieler')">
-      <span class="role-btn-icon">👁️</span>
-      <div class="role-btn-text">Nur ansehen<span>Ergebnisse & Rangliste</span></div>
+      <span class="role-btn-icon">🏌️</span>
+      <div class="role-btn-text">Spieler<span>Ergebnisse & Rangliste</span></div>
     </button>
     <button class="role-btn role-btn-admin" onclick="selectRole('admin')">
       <span class="role-btn-icon">⚙️</span>
@@ -1064,6 +1072,7 @@ function skipNameSelect(){
 
 function showPlayerStats(player){
   document.getElementById('stats-screen').classList.add('active');
+  document.getElementById('login').classList.add('stats-active');
   document.getElementById('stats-name').textContent = player.name+(player.lastName?' '+player.lastName:'');
   document.getElementById('stats-hcp').textContent = 'Aktuelles HCP: '+player.hcp;
 
@@ -1486,9 +1495,10 @@ function renderOneGame(g){
     const r=tiedRank(ranked,i);
     const bold=r<=3;
     const medal=r<=3?medals[r-1]:`<span style="color:var(--t2);font-weight:600">${r}.</span>`;
-    return `<tr class="${bold?'top3':''}">
+    const isMe=_currentPlayer&&p.playerId===_currentPlayer.id;
+    return `<tr class="${bold?'top3':''} ${isMe?'my-row':''}">
       <td class="td-c">${medal}</td>
-      <td>${esc(p.playerName)}</td>
+      <td>${esc(p.playerName)}${isMe?' <span style="font-size:11px;color:var(--orange)">◀ Du</span>':''}</td>
       <td class="td-c">${p.stableford}</td>
       <td class="td-c" style="color:var(--t2)">${p.hcpAtTime}</td>
       <td class="td-c">${p.ladies}</td>
@@ -1651,11 +1661,12 @@ function renderGesamt(){
     const detailHtml=rankDetailHtml(p.ranks, p.droppedRanks);
     const dropChip=p.drops>0
       ?`<span class="chip chip-orange" style="font-size:10px;margin-left:4px">${p.drops}&nbsp;Str.</span>`:'';
+    const isMe=_currentPlayer&&p.id===_currentPlayer.id;
     const style=dimmed?'opacity:.5;font-weight:400':'';
-    return `<tr class="${bold?'top3':''}" style="${style}">
+    return `<tr class="${bold?'top3':''} ${isMe?'my-row':''}" style="${style}">
       <td class="td-c">${rankLabel}</td>
       <td>
-        <span>${esc(p.name)}</span>${dropChip}
+        <span>${esc(p.name)}</span>${dropChip}${isMe?' <span style="font-size:11px;color:var(--orange)">◀ Du</span>':''}
         <div class="rank-detail">${detailHtml} = ${p.effectiveSum} Pkt.</div>
       </td>
       <td class="td-c">${p.games}</td>
