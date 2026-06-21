@@ -461,55 +461,14 @@ details .steps-body{padding:8px 16px 14px}
       </div>
     </div>
 
-    <!-- GitHub Config -->
-    <div class="form-section">
-      <div class="form-label">GitHub Zugangsdaten</div>
-      <div class="input-group">
-        <div class="input-row">
-          <label class="input-lbl" for="s-token">Token</label>
-          <input class="input-field" type="password" id="s-token" placeholder="ghp_..." autocomplete="off">
-        </div>
-        <div class="input-row">
-          <label class="input-lbl" for="s-repo">Repository</label>
-          <input class="input-field" type="text" id="s-repo" placeholder="heikoscholz-boop/bayergolf" autocomplete="off">
-        </div>
-      </div>
+    <!-- Info: automatisch verbunden -->
+    <div class="alert alert-ok" style="margin-bottom:16px">
+      ✅ Die App ist automatisch mit der Bayergolf-Cloud verbunden. Keine weitere Einrichtung nötig.
     </div>
-    <button class="btn btn-primary btn-w" onclick="saveCloudSettings()" style="margin-bottom:12px">Verbindung herstellen</button>
-    <button class="btn btn-danger btn-w" onclick="clearCloudSettings()" style="margin-bottom:24px">Verbindung trennen</button>
 
-    <!-- Setup Instructions -->
-    <div class="card" style="margin-bottom:16px">
-      <details>
-        <summary>📖 Einrichtungsanleitung (2 Minuten)</summary>
-        <div class="steps-body">
-          <div class="setup-step">
-            <div class="step-num">1</div>
-            <div class="step-text">Gehe auf <a href="https://github.com" target="_blank">github.com</a>, klicke oben rechts auf dein Profilbild → <strong>Settings</strong>.</div>
-          </div>
-          <div class="setup-step">
-            <div class="step-num">2</div>
-            <div class="step-text">Ganz unten links: <strong>Developer settings</strong> → <strong>Personal access tokens</strong> → <strong>Tokens (classic)</strong> → <strong>Generate new token (classic)</strong>.</div>
-          </div>
-          <div class="setup-step">
-            <div class="step-num">3</div>
-            <div class="step-text">Gib einen Namen ein (z. B. <code>Bayergolf</code>), setze den Haken bei <strong>public_repo</strong> und klicke auf <strong>Generate token</strong>.</div>
-          </div>
-          <div class="setup-step">
-            <div class="step-num">4</div>
-            <div class="step-text">Kopiere den angezeigten Token (beginnt mit <code>ghp_</code>), füge ihn oben ins Feld <em>Token</em> ein. Das Feld <em>Repository</em> ist bereits vorausgefüllt.</div>
-          </div>
-          <div class="setup-step">
-            <div class="step-num">5</div>
-            <div class="step-text">Tippe auf <strong>„Verbindung herstellen"</strong> — fertig! Die Daten werden direkt in deinem GitHub-Repository gespeichert.</div>
-          </div>
-          <div class="setup-step">
-            <div class="step-num">💡</div>
-            <div class="step-text"><strong>Tipp für Mitspieler:</strong> Den Token einmalig per WhatsApp teilen. Jeder gibt ihn einmal in der App ein und sieht sofort alle aktuellen Daten.</div>
-          </div>
-        </div>
-      </details>
-    </div>
+    <!-- Versteckte Felder für interne Nutzung (JS benötigt sie) -->
+    <input type="hidden" id="s-token">
+    <input type="hidden" id="s-repo">
 
     <!-- Danger Zone -->
     <div class="form-section">
@@ -670,7 +629,10 @@ details .steps-body{padding:8px 16px 14px}
    DATA & SETTINGS
 ════════════════════════════════════════════════════ */
 let DB       = { players:[], games:[] };
-let SETTINGS = { githubToken:'', githubRepo:'heikoscholz-boop/bayergolf', _sha:'' };
+// Standard-Zugangsdaten — für alle Nutzer vorausgefüllt
+const _DEFAULT_TOKEN = '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';
+const _DEFAULT_REPO  = 'heikoscholz-boop/bayergolf';
+let SETTINGS = { githubToken:_DEFAULT_TOKEN, githubRepo:_DEFAULT_REPO, _sha:'' };
 let _activeGame = null;
 let _syncTimer  = null;
 let _syncStatus = 'off'; // off | busy | ok | err
@@ -680,7 +642,14 @@ const GITHUB_FILE = 'data.json';
 function loadLocal(){
   try{
     const d=localStorage.getItem('bg_v4'); if(d) DB=JSON.parse(d);
-    const s=localStorage.getItem('bg_cfg'); if(s) SETTINGS=JSON.parse(s);
+    const s=localStorage.getItem('bg_cfg');
+    if(s){
+      const saved=JSON.parse(s);
+      // Token/Repo aus Defaults übernehmen falls leer (Erstnutzung)
+      SETTINGS={...SETTINGS,...saved};
+      if(!SETTINGS.githubToken) SETTINGS.githubToken=_DEFAULT_TOKEN;
+      if(!SETTINGS.githubRepo)  SETTINGS.githubRepo=_DEFAULT_REPO;
+    }
   }catch(e){}
 }
 function saveLocal(){
@@ -1405,14 +1374,10 @@ function renderGesamt(){
    SETTINGS VIEW
 ════════════════════════════════════════════════════ */
 function renderSettingsView(){
-  document.getElementById('s-token').value=SETTINGS.githubToken||'';
-  document.getElementById('s-repo').value=SETTINGS.githubRepo||'heikoscholz-boop/bayergolf';
   const stText=document.getElementById('cloudStatusText');
-  if(SETTINGS.githubToken){
-    stText.textContent=_syncStatus==='ok'?'Verbunden · zuletzt synchronisiert: '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'Konfiguriert – bereit';
-  } else {
-    stText.textContent='Nicht konfiguriert – bitte GitHub Token eingeben';
-  }
+  stText.textContent=_syncStatus==='ok'
+    ?'Verbunden · zuletzt synchronisiert: '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})
+    :'Automatisch verbunden – bereit';
 }
 
 /* ════════════════════════════════════════════════════
@@ -1581,8 +1546,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   renderPlayers();
 
   // populate settings fields
-  document.getElementById('s-token').value=SETTINGS.githubToken||'';
-  document.getElementById('s-repo').value=SETTINGS.githubRepo||'heikoscholz-boop/bayergolf';
+  // Token ist eingebaut – keine manuelle Eingabe nötig
 
   if(SETTINGS.githubToken && SETTINGS.githubRepo){
     setSyncStatus('busy','Lädt…');
