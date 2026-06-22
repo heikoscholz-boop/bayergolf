@@ -664,26 +664,22 @@ details .steps-body{padding:8px 16px 14px}
       </div>
     </div>
 
-    <!-- Info: automatisch verbunden -->
-    <div class="alert alert-ok" style="margin-bottom:16px">
-      ✅ Die App ist automatisch mit der Bayergolf-Cloud verbunden.
-    </div>
-
-    <!-- Token-Erneuerung (nur bei 401-Fehler sichtbar) -->
-    <div id="token-renewal" style="display:none;margin-bottom:16px">
-      <div class="alert alert-warn" style="margin-bottom:10px">
-        ⚠️ <strong>Token abgelaufen (401)</strong> — Bitte neuen GitHub Token eingeben.
-      </div>
+    <!-- Admin: GitHub Token für Schreibzugriff -->
+    <div class="form-section">
+      <div class="form-label">Admin — Schreibzugriff</div>
       <div class="input-group">
         <div class="input-row">
-          <label class="input-lbl" for="s-token">Neuer Token</label>
-          <input class="input-field" type="password" id="s-token" placeholder="ghp_..." autocomplete="off">
+          <label class="input-lbl" for="s-token">GitHub Token</label>
+          <input class="input-field" type="password" id="s-token"
+                 placeholder="ghp_... (nur für Admin)" autocomplete="off">
         </div>
       </div>
-      <button class="btn btn-primary btn-w" onclick="renewToken()" style="margin-top:10px">Token speichern & verbinden</button>
+      <div style="font-size:12px;color:var(--t2);padding:6px 2px 10px">
+        Token wird nur lokal gespeichert — nie im App-Code.
+      </div>
+      <button class="btn btn-primary btn-w" onclick="renewToken()">Token speichern & verbinden</button>
     </div>
-
-    <!-- Versteckte Felder für interne Nutzung (JS benötigt sie) -->
+    <div id="token-renewal" style="display:none"></div>
     <input type="hidden" id="s-repo">
 
     <!-- Danger Zone -->
@@ -845,15 +841,15 @@ details .steps-body{padding:8px 16px 14px}
    DATA & SETTINGS
 ════════════════════════════════════════════════════ */
 let DB       = { players:[], games:[] };
-// Standard-Zugangsdaten — für alle Nutzer vorausgefüllt
-const _DEFAULT_TOKEN = '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';
-const _DEFAULT_REPO  = 'heikoscholz-boop/bayergolf';
-let SETTINGS = { githubToken:_DEFAULT_TOKEN, githubRepo:_DEFAULT_REPO, _sha:'' };
+const _DEFAULT_REPO = 'heikoscholz-boop/bayergolf';
+const GITHUB_FILE   = 'data.json';
+// Öffentliche Lese-URL (kein Token nötig — funktioniert für alle)
+const GITHUB_RAW    = 'https://raw.githubusercontent.com/'+_DEFAULT_REPO+'/main/'+GITHUB_FILE;
+
+let SETTINGS = { githubToken:'', githubRepo:_DEFAULT_REPO, _sha:'' };
 let _activeGame = null;
 let _syncTimer  = null;
 let _syncStatus = 'off'; // off | busy | ok | err
-
-const GITHUB_FILE = 'data.json';
 
 function loadLocal(){
   try{
@@ -863,10 +859,8 @@ function loadLocal(){
       const saved=JSON.parse(s);
       SETTINGS={...SETTINGS,...saved};
     }
-    // Token immer aus dem eingebautem Default übernehmen (ignoriert Cache)
-    SETTINGS.githubToken=_DEFAULT_TOKEN;
+    // Repo immer auf Default setzen; Token kommt nur aus localStorage
     SETTINGS.githubRepo=_DEFAULT_REPO;
-    SETTINGS._sha='';
   }catch(e){}
 }
 function saveLocal(){
@@ -907,7 +901,7 @@ function setSyncStatus(st, label){
   if(stText){
     if(st==='ok')   stText.textContent='Verbunden · '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
     else if(st==='busy') stText.textContent='Wird synchronisiert…';
-    else if(st==='err')  stText.textContent='⚠️ Sync-Fehler (401) — Token erneuern';
+    else if(st==='err')  stText.textContent=isAdmin()?'⚠️ Fehler beim Speichern — Token prüfen':'Verbindungsfehler';
     else if(!SETTINGS.githubToken) stText.textContent='Nicht konfiguriert';
   }
   // Token-Erneuerungs-Hinweis für Admins einblenden
@@ -916,15 +910,12 @@ function setSyncStatus(st, label){
 }
 
 async function loadFromCloud(){
-  if(!SETTINGS.githubToken||!SETTINGS.githubRepo) return false;
-  const r=await fetch(ghApiUrl(),{headers:ghHeaders()});
-  if(r.status===404) return false;
-  if(r.status===401) throw new Error('HTTP 401 – Token abgelaufen');
+  // Öffentliche URL — kein Token nötig, funktioniert für alle Nutzer
+  const url=GITHUB_RAW+'?t='+Date.now();
+  const r=await fetch(url);
+  if(r.status===404) return false; // data.json noch nicht vorhanden
   if(!r.ok) throw new Error('HTTP '+r.status);
-  const j=await r.json();
-  SETTINGS._sha=j.sha;
-  saveSettings();
-  const data=JSON.parse(fromBase64(j.content));
+  const data=await r.json();
   if(data&&(data.players||data.games)){ DB=data; saveLocal(); }
   return true;
 }
