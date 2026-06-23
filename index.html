@@ -958,7 +958,7 @@ function save(){
 }
 
 async function syncNow(){
-  if(!SETTINGS.githubToken){ toast('Bitte zuerst den Token eingeben.'); return; }
+  // Kein Token nötig — Lesen ist öffentlich
   setSyncStatus('busy');
   try{
     await loadFromCloud();
@@ -1938,23 +1938,25 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   // populate settings fields
   // Token ist eingebaut – keine manuelle Eingabe nötig
 
-  if(SETTINGS.githubToken && SETTINGS.githubRepo){
-    setSyncStatus('busy','Lädt…');
-    try{
-      await loadFromCloud();
-      setSyncStatus('ok');
-      renderPlayers(); // refresh after cloud load
-      hideSplash('Bereit!');
-    }catch(e){
-      setSyncStatus('err');
-      hideSplash('Lokale Daten geladen');
-    }
-  } else {
-    setSyncStatus('off');
-    // Kein Cloud-Sync → Splash läuft bis Mindestzeit ab
+  // Daten IMMER laden — öffentlich lesbar, kein Token nötig
+  setSyncStatus('busy','Lädt…');
+  try{
+    await loadFromCloud();
+    setSyncStatus('ok');
+    renderCurrentView();
     hideSplash('Bereit! ⛳');
+  }catch(e){
+    setSyncStatus('err');
+    hideSplash('Lokale Daten geladen');
   }
 });
 </script>
+<!-- Versions-Label -->
+<div style="
+  position:fixed;bottom:calc(env(safe-area-inset-bottom) + 58px);right:10px;
+  font-size:9px;color:rgba(0,0,0,.2);font-family:-apple-system,sans-serif;
+  pointer-events:none;z-index:50;letter-spacing:.2px;
+  font-variant-numeric:tabular-nums;
+">v 23.06.2026 07:13</div>
 </body>
 </html>
